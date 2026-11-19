@@ -1,32 +1,73 @@
-# React + TypeScript + Vite
+# FCapEx — Montador de PX
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Sistema web (SaaS multiempresa) para montar **PX** (planilhas de preço CapEx) a partir de **PQ**
+(planilhas de quantidades). Regras de negócio acumuladas: [`CONTEXTO.md`](CONTEXTO.md).
+Protótipo original (HTML único): [`prototipo/montador-px.html`](prototipo/montador-px.html).
 
-Currently, two official plugins are available:
+## Arquitetura
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Camada | Tecnologia | Onde |
+|---|---|---|
+| Interface | React + TypeScript (Vite) | `src/telas`, `src/app` |
+| Regras de cálculo e leitura de PQ | TypeScript puro, sem dependência de tela | `src/dominio` |
+| Acesso a dados | supabase-js | `src/dados` |
+| Banco, login, arquivos | Supabase (Postgres + Auth + Storage) | `supabase/migrations` |
 
-## React Compiler
+**Multiempresa:** toda tabela tem `empresa_id` e é protegida por RLS no Postgres. Um usuário só
+lê e grava dados das empresas das quais é membro, mesmo chamando a API diretamente.
+Papéis por empresa: Administrador, Orçamentista, Revisor e Somente leitura.
+Câmbio, alíquotas e pacotes de serviço são parâmetros de cada empresa.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Rodar localmente
 
-## Expanding the Oxlint configuration
+Pré-requisitos: Node 20+ e Docker.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+```bash
+npx supabase start
+```
+
+```bash
+cp .env.example .env
+```
+
+Preencha o `.env` com `API_URL` e `ANON_KEY` mostrados pelo `supabase start`. Depois:
+
+```bash
+npm run dev
+```
+
+## Testes
+
+```bash
+npm test
+```
+
+Regras de cálculo, Check e leitura de PQ com planilhas `.xlsx` reais.
+
+```bash
+npm run test:db
+```
+
+Segurança do banco: isolamento entre empresas, papéis, revisões imutáveis e storage.
+Precisa de PostgreSQL instalado localmente.
+
+## Publicar no Supabase (produção)
+
+```bash
+npx supabase login
+```
+
+```bash
+npx supabase link --project-ref SEU_PROJECT_REF
+```
+
+```bash
+npx supabase db push
+```
+
+Depois, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` na hospedagem do site (ex.: Vercel)
+e rode `npm run build`.

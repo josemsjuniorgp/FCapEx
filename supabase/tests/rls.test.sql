@@ -128,3 +128,18 @@ insert into auth.users values ('00000000-0000-0000-0000-0000000000ee', 'eve@x');
 select pg_temp.como('00000000-0000-0000-0000-0000000000ee');
 select pg_temp.confere((select count(*) from public.pxs) + (select count(*) from public.itens) + (select count(*) from public.membros) = 0, 'estranho não vê nada');
 reset role;
+
+-- 13) Equipe: admin adiciona por e-mail; orçamentista não; empresa não fica sem admin
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+select public.adicionar_membro((select v from ids where k='A'), 'EVE@X', 'revisor');
+select pg_temp.confere((select papel::text from public.listar_membros((select v from ids where k='A')) where email = 'eve@x') = 'revisor', 'admin adiciona membro por e-mail');
+select pg_temp.confere((select count(*) from public.listar_membros((select v from ids where k='B'))) = 0, 'não lista membros de outra empresa');
+select pg_temp.deve_falhar(format($q$select public.adicionar_membro(%L, 'ninguem@x', 'leitura')$q$, (select v from ids where k='A')), 'e-mail inexistente');
+select pg_temp.deve_falhar(format($q$delete from public.membros where empresa_id = %L and usuario_id = '00000000-0000-0000-0000-00000000000a'$q$, (select v from ids where k='A')), 'remover o único admin');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+select pg_temp.deve_falhar(format($q$select public.adicionar_membro(%L, 'eve@x', 'admin')$q$, (select v from ids where k='A')), 'orçamentista adicionar membro');
+reset role;
+-- excluir a empresa inteira continua possível (cascata)
+delete from public.empresas where id = (select v from ids where k='B');
+select pg_temp.confere((select count(*) from public.membros where empresa_id = (select v from ids where k='B')) = 0, 'excluir empresa remove membros');

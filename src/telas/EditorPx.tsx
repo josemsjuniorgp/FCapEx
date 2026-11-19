@@ -1,0 +1,379 @@
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useSessao } from '../app/Sessao';
+import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao } from '../app/ui';
+import {
+  atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
+  listarProjetos, listarRevisoes, type ItemPos, type Projeto, type Px, type Revisao,
+} from '../dados/api';
+import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
+import { COLUNAS, OPCOES, type Coluna } from '../dominio/colunas';
+import { parseNum } from '../dominio/normalizacao';
+import { itemVazio } from '../dominio/pq';
+import type { Resultado } from '../dominio/tipos';
+import { ImportarPq } from './ImportarPq';
+
+const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
+type Filtro = null | 'OK' | 'INCOMPLETO' | 'ERRO';
+
+export function EditorPx() {
+  const { id = '' } = useParams();
+  const { empresa, parametros, moedas, podeEditar } = useSessao();
+  const acao = useAcao();
+  const ir = useNavigate();
+  const [px, setPx] = useState<Px | null>(null);
+  const [revs, setRevs] = useState<Revisao[]>([]);
+  const [itens, setItens] = useState<ItemPos[]>([]);
+  const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [ocultas, setOcultas] = useState<Set<string>>(new Set());
+  const [grupo, setGrupo] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>(null);
+  const [busca, setBusca] = useState('');
+  const [sel, setSel] = useState<string | null>(null);
+  const [painel, setPainel] = useState<'dados' | 'colunas' | null>(null);
+  const [importar, setImportar] = useState(false);
+  const [perguntar, setPerguntar] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const revAtual = revs.find(r => !r.emitida_em);
+  const emitidas = revs.filter(r => r.emitida_em);
+
+  const carregar = useCallback(async () => {
+    if (!empresa) return;
+    try {
+      const [x, r, pj] = await Promise.all([lerPx(id), listarRevisoes(id), listarProjetos(empresa.id)]);
+      setPx(x); setRevs(r); setProjetos(pj);
+      const atual = r.find(v => !v.emitida_em);
+      setItens(atual ? await listarItens(atual.id) : []);
+      setOcultas(new Set(JSON.parse(localStorage.getItem('fcapex:ocultas:' + id) || '[]')));
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+  }, [id, empresa]);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const modelo = useMemo(() => new Set(px?.colunas ?? []), [px]);
+  const colunas = COLUNAS.filter(c => c.k === 'seq' || (modelo.has(c.k) && !ocultas.has(c.k)));
+  const res = useMemo(() => {
+    const m = new Map<string, Resultado>();
+    if (parametros) for (const it of itens) m.set(it.id, calcular(it, parametros, modelo));
+    return m;
+  }, [itens, parametros, modelo]);
+  const t = useMemo(() => (parametros ? totais(itens, parametros, modelo) : null), [itens, parametros, modelo]);
+  const grupos = useMemo(() => gruposPorTitulo(itens), [itens]);
+  const titulos = itens.filter(i => i.titulo);
+
+  const visiveis = itens.filter(it => {
+    if (grupo && it.id !== grupo && grupos.get(it.id) !== grupo) return false;
+    if (filtro && !it.titulo && res.get(it.id)?.chk !== filtro) return false;
+    if (filtro && it.titulo) return false;
+    if (busca) {
+      const q = busca.toLowerCase();
+      return [it.desc, it.item, it.area, it.subarea, it.ativo, it.pacote, it.pqdoc].some(v => v.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  // --------------------------------------------------------------- edição
+  async function salvarCampo(itemId: string, k: string, v: unknown) {
+    const antes = itens.find(i => i.id === itemId);
+    if (!antes || (antes as unknown as Record<string, unknown>)[k] === v) return;
+    setItens(l => l.map(i => (i.id === itemId ? { ...i, [k]: v } : i)));
+    const okk = await acao(() => atualizarItem(itemId, { [k]: v }));
+    if (!okk) setItens(l => l.map(i => (i.id === itemId ? antes : i)));
+    else if (px) atualizarPx(px.id, {}).catch(() => {});
+  }
+
+  async function inserirItem() {
+    if (!empresa || !revAtual) return;
+    const idx = sel ? itens.findIndex(i => i.id === sel) : itens.length - 1;
+    const a = itens[idx]?.posicao ?? 0, b = itens[idx + 1]?.posicao;
+    const novo: ItemPos = { ...itemVazio(crypto.randomUUID(), Math.max(0, ...itens.map(i => i.seq)) + 1), posicao: b === undefined ? a + 1 : (a + b) / 2 };
+    if (await acao(() => inserirItens(empresa.id, revAtual.id, [novo]))) {
+      setItens(l => [...l.slice(0, idx + 1), novo, ...l.slice(idx + 1)]); setSel(novo.id);
+    }
+  }
+
+  async function apagarItem(itemId: string) {
+    setPerguntar(null);
+    if (await acao(() => excluirItem(itemId))) setItens(l => l.filter(i => i.id !== itemId));
+  }
+
+  async function emitir() {
+    if (!px || !t) return;
+    setPerguntar(null);
+    if (await acao(() => emitirRevisao(px.id, t.ger), `Rev ${revAtual?.numero} emitida. A edição continua na Rev ${(revAtual?.numero ?? 0) + 1}.`)) carregar();
+  }
+
+  function ocultar(k: string, sim: boolean) {
+    const s = new Set(ocultas); if (sim) s.add(k); else s.delete(k);
+    setOcultas(s); localStorage.setItem('fcapex:ocultas:' + id, JSON.stringify([...s]));
+  }
+
+  if (erro) return <div className="banner">Não foi possível abrir a PX: {erro}</div>;
+  if (!px || !parametros || !t) return <p className="note">Carregando…</p>;
+  const editavel = podeEditar && !!revAtual;
+  const usd = parametros.cambio.USD, eur = parametros.cambio.EUR;
+
+  return (
+    <div id="pxEdit">
+      <header className="tools" style={{ background: 'var(--surface)' }}>
+        <Link to="/" className="linkbtn">← Projetos</Link>
+        <strong>{px.nome}</strong><span className="note mono">{px.codigo} · Rev {revAtual?.numero ?? '—'}</span>
+        <span className="pill p-mut">{px.modelo_nome}</span>
+      </header>
+      <div className="kpis">
+        <div className="kpi"><small>Total geral</small><b>{brlCurto(t.ger)}</b></div>
+        <div className="kpi"><small>Total parcial</small><b>{brlCurto(t.parc)}</b></div>
+        <div className="kpi"><small>Itens</small><b>{itens.length - t.tit}</b></div>
+        <div className="row">
+          <button className="pill p-ok" aria-pressed={filtro === 'OK'} onClick={() => setFiltro(filtro === 'OK' ? null : 'OK')}><i />{t.ok} ok</button>
+          <button className="pill p-warn" onClick={() => setFiltro(filtro === 'INCOMPLETO' ? null : 'INCOMPLETO')}><i />{t.inc} incompletas</button>
+          <button className="pill p-err" onClick={() => setFiltro(filtro === 'ERRO' ? null : 'ERRO')}><i />{t.err} com erro</button>
+          {filtro && <button className="linkbtn" onClick={() => setFiltro(null)}>limpar filtro</button>}
+        </div>
+        <span className="spacer" />
+        <span className="note">Câmbio: US$ {usd ? nf(usd, 4) : '—'} · € {eur ? nf(eur, 4) : '—'} (<Link to="/parametros">parâmetros</Link>)</span>
+      </div>
+      <div className="tools">
+        <input className="in" type="search" placeholder="Buscar descrição, item, área, pacote…" value={busca} onChange={e => setBusca(e.target.value)} />
+        {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
+        {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
+        <span className="spacer" />
+        <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Colunas</button>
+        <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
+        <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar</button>
+        {editavel && <button className="btn primary" onClick={() => setPerguntar('emitir')}>Emitir nova revisão</button>}
+      </div>
+      {perguntar === 'emitir' && revAtual && (
+        <div style={{ padding: '0 20px' }}>
+          <Confirmar sim={`Emitir Rev ${revAtual.numero}`} onNao={() => setPerguntar(null)} onSim={emitir}
+            msg={<>Emitir a <b>Rev {revAtual.numero}</b> ({plural(itens.length - t.tit, 'item', 'itens')}, total {brl(t.ger)}
+              {t.inc + t.err ? `, ${t.inc + t.err} com pendência` : ''})? Ela fica congelada e a edição continua na Rev {revAtual.numero + 1}.</>} />
+        </div>
+      )}
+
+      <div className="workspace">
+        <nav className="tree" aria-label="Grupos">
+          <button aria-pressed={grupo === null} onClick={() => setGrupo(null)}><span>Todos os itens<small>{brlCurto(t.ger)}</small></span><span className="c">{itens.length - t.tit}</span></button>
+          {titulos.map(ti => {
+            const membros = itens.filter(i => grupos.get(i.id) === ti.id && !i.titulo);
+            const soma = membros.reduce((s, i) => s + (res.get(i.id)?.ger || 0), 0);
+            return (
+              <button key={ti.id} aria-pressed={grupo === ti.id} title={ti.desc} onClick={() => setGrupo(ti.id)}>
+                <span>{ti.item && <span className="mono">{ti.item} </span>}{ti.desc || 'Título sem nome'}<small>{brlCurto(soma)}</small></span>
+                <span className="c">{membros.length}</span>
+              </button>
+            );
+          })}
+          {!titulos.length && <p className="note" style={{ padding: 8 }}>Os grupos aparecem a partir das linhas de título importadas da PQ.</p>}
+        </nav>
+
+        <div className="gridwrap">
+          <table className="grid">
+            <thead>
+              <tr className="g">{agruparCabecalho(colunas, editavel)}</tr>
+              <tr className="h">
+                {colunas.map(c => (
+                  <th key={c.k} className={c.k === 'seq' ? 'sticky c1' : ''} style={c.w ? { minWidth: c.w } : undefined}
+                    title={c.t === 'calc' && c.f ? 'Fórmula: ' + c.f : ''}>
+                    {c.h}{c.t === 'calc' && <span className="fx">fx</span>}
+                  </th>
+                ))}
+                {editavel && <th />}
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map(it => {
+                const r = res.get(it.id)!;
+                return (
+                  <tr key={it.id} className={(it.titulo ? 'title ' : '') + (sel === it.id ? 'sel' : '')} onClick={() => setSel(it.id)}>
+                    {colunas.map(c => (
+                      <Celula key={c.k} c={c} it={it} r={r} editavel={editavel}
+                        moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}
+                        simbolo={moedas.find(m => m.codigo === it.moeda)?.simbolo ?? ''}
+                        dica={c.k === 'chk' ? detalheCheck(it, r, parametros, modelo) : undefined}
+                        onSalvar={v => salvarCampo(it.id, c.k, v)} />
+                    ))}
+                    {editavel && (
+                      <td className="rowdel">
+                        {perguntar === 'del:' + it.id
+                          ? <Confirmar msg="Excluir este item?" sim="Excluir" onSim={() => apagarItem(it.id)} onNao={() => setPerguntar(null)} />
+                          : <button className="btn small danger" onClick={e => { e.stopPropagation(); setPerguntar('del:' + it.id); }}>Excluir</button>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!itens.length && <div style={{ padding: 24 }} className="note">Esta PX ainda não tem itens. Use <b>Importar PQ</b> ou <b>Inserir item</b>.</div>}
+        </div>
+
+        <aside className={'side-panel' + (painel ? ' on' : '')}>
+          {painel === 'colunas' && (
+            <>
+              <div className="panel-head"><h2>Colunas</h2><button className="btn small" onClick={() => setPainel(null)}>Fechar</button></div>
+              <span className="note">Ocultar uma coluna só muda a sua visualização, não o modelo da PX.</span>
+              {[...new Set(COLUNAS.filter(c => modelo.has(c.k)).map(c => c.g))].map(g => (
+                <div className="group-box" key={g}><strong>{g}</strong>
+                  {COLUNAS.filter(c => c.g === g && modelo.has(c.k)).map(c => (
+                    <label key={c.k}><input type="checkbox" disabled={c.lock} checked={!ocultas.has(c.k)} onChange={e => ocultar(c.k, !e.target.checked)} />{c.h}</label>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+          {painel === 'dados' && (
+            <DadosPx px={px} projetos={projetos} emitidas={emitidas} revAtual={revAtual} podeEditar={podeEditar}
+              onSalvo={carregar} onComparar={i => ir(`/px/${px.id}/comparar?de=${i}`)}
+              onExcluir={async () => { if (await acao(() => excluirPx(px.id), `${px.codigo} excluída.`)) ir('/'); }} />
+          )}
+        </aside>
+      </div>
+
+      {importar && revAtual && empresa && (
+        <ImportarPq empresaId={empresa.id} revisaoId={revAtual.id} modelo={modelo} itens={itens}
+          onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); carregar(); }} />
+      )}
+    </div>
+  );
+}
+
+function agruparCabecalho(cols: Coluna[], extra: boolean): ReactNode[] {
+  const out: ReactNode[] = [];
+  for (let i = 0; i < cols.length;) {
+    let j = i; while (j < cols.length && cols[j].g === cols[i].g) j++;
+    out.push(<th key={i} colSpan={j - i} className={i === 0 ? 'sticky c1' : ''}>{cols[i].g}</th>);
+    i = j;
+  }
+  if (extra) out.push(<th key="x" />);
+  return out;
+}
+
+// ------------------------------------------------------------------ célula da grade
+function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
+  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string;
+  dica?: string; onSalvar: (v: unknown) => void;
+}) {
+  if (c.k === 'seq') return <td className="sticky c1 mono">{it.seq}</td>;
+  // linha de título: só Item PQ e Descrição, sem campo para preencher
+  if (it.titulo) {
+    if (c.k === 'item' || c.k === 'desc') {
+      return editavel
+        ? <td className="in-c"><Entrada valor={(it as unknown as Record<string, string>)[c.k]} onSalvar={onSalvar} /></td>
+        : <td className="txt">{(it as unknown as Record<string, string>)[c.k]}</td>;
+    }
+    return <td />;
+  }
+  if (c.t === 'calc') {
+    if (c.k === 'chk') {
+      const [cls, txt] = ROTULO_CHK[r.chk];
+      return <td className="calc chk" title={dica}><span className={'pill ' + cls}><i />{txt}</span></td>;
+    }
+    const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger'];
+    return (
+      <td className="calc" title={c.f}>
+        {c.k === 'trib' && r.pacote && <span className="tag" title="Item de pacote de serviço: tributado como serviço nacional">pacote</span>}
+        {v === null ? '—' : nf(v, 2)}
+      </td>
+    );
+  }
+  const valor = (it as unknown as Record<string, unknown>)[c.k];
+  if (c.k === 'tipo' || c.k === 'orig' || c.k === 'moeda') {
+    const ops: readonly (readonly [string, string])[] = c.k === 'moeda' ? moedas : OPCOES[c.k];
+    const s = String(valor ?? '');
+    const invalido = s && !ops.some(([v]) => v === s);
+    if (!editavel) return <td className="txt">{s ? (ops.find(([v]) => v === s)?.[1] ?? s) : ''}</td>;
+    return (
+      <td className="in-c">
+        <select value={s} onChange={e => onSalvar(e.target.value)}
+          style={{ boxShadow: !s ? 'inset 0 0 0 2px var(--warn)' : invalido ? 'inset 0 0 0 2px var(--err)' : undefined }}>
+          <option value="">escolher</option>
+          {invalido && <option value={s}>({s}) inválido</option>}
+          {ops.map(([v, n]) => <option key={v} value={v}>{c.k === 'moeda' ? n : `(${v}) ${n}`}</option>)}
+        </select>
+      </td>
+    );
+  }
+  if (c.num) {
+    const n = valor as number | null;
+    const mostra = n === null ? '' : c.pct ? nf(n * 100, 1) : nf(n, c.dec ?? 2);
+    if (!editavel) return <td className="calc" style={{ background: 'transparent' }}>{mostra}{c.pct && n !== null ? '%' : ''}</td>;
+    const salvarNum = (s: string) => {
+      const x = parseNum(s.replace('%', ''));
+      onSalvar(Number.isNaN(x) ? null : c.pct ? x / 100 : x);
+    };
+    return (
+      <td className={'in-c' + (c.req && n === null ? ' miss' : '')}>
+        {c.k === 'preco'
+          ? <div className="cur">{simbolo && <span>{simbolo}</span>}<Entrada num valor={mostra} onSalvar={salvarNum} /></div>
+          : <Entrada num valor={mostra} onSalvar={salvarNum} />}
+      </td>
+    );
+  }
+  if (!editavel) return <td className="txt">{String(valor ?? '')}</td>;
+  return (
+    <td className={'in-c' + (c.req && !valor ? ' miss' : '')} title={c.k === 'desc' ? String(valor) : undefined}>
+      <Entrada valor={String(valor ?? '')} onSalvar={onSalvar} />
+    </td>
+  );
+}
+
+/** Campo que salva ao sair (blur) ou com Enter; Esc desfaz. */
+function Entrada({ valor, num, onSalvar }: { valor: string; num?: boolean; onSalvar: (v: string) => void }) {
+  const [v, setV] = useState(valor);
+  useEffect(() => setV(valor), [valor]);
+  return (
+    <input className={num ? 'numi' : ''} value={v} onChange={e => setV(e.target.value)}
+      onBlur={() => { if (v !== valor) onSalvar(v.trim()); }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Escape') { setV(valor); (e.target as HTMLInputElement).blur(); }
+      }} />
+  );
+}
+
+// ------------------------------------------------------------------ painel Dados da PX
+function DadosPx({ px, projetos, emitidas, revAtual, podeEditar, onSalvo, onComparar, onExcluir }: {
+  px: Px; projetos: Projeto[]; emitidas: Revisao[]; revAtual?: Revisao; podeEditar: boolean;
+  onSalvo: () => void; onComparar: (i: number) => void; onExcluir: () => void;
+}) {
+  const acao = useAcao();
+  const [nome, setNome] = useState(px.nome);
+  const [obs, setObs] = useState(px.observacoes);
+  const [proj, setProj] = useState(px.projeto_id);
+  const [apagar, setApagar] = useState(false);
+  useEffect(() => { setNome(px.nome); setObs(px.observacoes); setProj(px.projeto_id); }, [px]);
+  const mudou = nome !== px.nome || obs !== px.observacoes || proj !== px.projeto_id;
+
+  return (
+    <>
+      <div className="panel-head"><h2>Dados da PX</h2></div>
+      <label className="fld">Código<input className="in mono" value={px.codigo} disabled /></label>
+      <label className="fld">Nome<input className="in" value={nome} disabled={!podeEditar} onChange={e => setNome(e.target.value)} /></label>
+      <label className="fld">Projeto
+        <select value={proj} disabled={!podeEditar} onChange={e => setProj(e.target.value)}>
+          {projetos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+        </select>
+      </label>
+      <label className="fld">Modelo<input className="in" value={`${px.modelo_nome} (${px.colunas.length} colunas)`} disabled /></label>
+      <label className="fld">Observações<textarea className="in" value={obs} disabled={!podeEditar} onChange={e => setObs(e.target.value)} /></label>
+      {podeEditar && <button className="btn primary" disabled={!mudou || !nome.trim()}
+        onClick={async () => { if (await acao(() => atualizarPx(px.id, { nome: nome.trim(), observacoes: obs, projeto_id: proj }), 'Dados salvos.')) onSalvo(); }}>Salvar</button>}
+      <div className="group-box stack" style={{ gap: 8 }}>
+        <strong>Revisões</strong>
+        {emitidas.map(r => (
+          <div className="row" key={r.id}>
+            <span className="mono">Rev {r.numero}</span>
+            <span className="note">{dataHora(r.emitida_em!)} · {r.total !== null ? brlCurto(r.total) : '—'}</span>
+            <span className="spacer" /><button className="btn small" onClick={() => onComparar(r.numero)}>Comparar com a atual</button>
+          </div>
+        ))}
+        {!emitidas.length && <span className="note">Nenhuma revisão emitida ainda.</span>}
+        {revAtual && <div className="row"><span className="mono">Rev {revAtual.numero}</span><span className="pill p-info">em edição</span></div>}
+      </div>
+      {podeEditar && (apagar
+        ? <Confirmar msg={<>Excluir a <b>{px.codigo}</b> e todas as revisões dela?</>} sim="Excluir PX" onSim={onExcluir} onNao={() => setApagar(false)} />
+        : <button className="btn danger" onClick={() => setApagar(true)}>Excluir PX</button>)}
+    </>
+  );
+}

@@ -1,6 +1,13 @@
 /** Leitura de .xlsx com ExcelJS, convertendo cada aba numa Matriz para interpretar(). */
-import ExcelJS from 'exceljs';
-import { interpretar, type Celula, type Matriz, type Planilha } from './pq';
+import type ExcelJS from 'exceljs';
+
+/** Carrega o ExcelJS sob demanda (é grande; não precisa estar na abertura do site). */
+async function novoWorkbook() {
+  const mod = await import('exceljs');
+  const E = (mod.default ?? mod) as typeof ExcelJS;
+  return new E.Workbook();
+}
+import { chaveDoCabecalho, interpretar, type Celula, type Matriz, type Planilha } from './pq';
 
 function valorBruto(v: ExcelJS.CellValue): unknown {
   if (v === null || v === undefined) return '';
@@ -45,10 +52,25 @@ export interface AbaLida { nome: string; planilha: Planilha }
 
 /** Lê todas as abas com itens, da que tem mais itens para a que tem menos. */
 export async function lerExcel(buf: ArrayBuffer): Promise<AbaLida[]> {
-  const wb = new ExcelJS.Workbook();
+  const wb = await novoWorkbook();
   await wb.xlsx.load(buf);
   const abas = wb.worksheets
     .map(ws => ({ nome: ws.name, planilha: interpretar(matrizDaAba(ws)) }))
     .filter(a => a.planilha.linhas.length);
   return abas.sort((a, b) => b.planilha.linhas.length - a.planilha.linhas.length);
+}
+
+/** Colunas reconhecidas no cabeçalho de um arquivo de modelo (pode não ter nenhum item). */
+export async function colunasDoModelo(buf: ArrayBuffer): Promise<string[]> {
+  const wb = await novoWorkbook();
+  await wb.xlsx.load(buf);
+  let melhor: string[] = [];
+  for (const ws of wb.worksheets) {
+    const m = matrizDaAba(ws);
+    for (let r = 0; r < Math.min(40, m.length); r++) {
+      const ks = [...new Set(m[r].map(c => chaveDoCabecalho(c.txt)).filter((k): k is string => !!k))];
+      if (ks.length > melhor.length) melhor = ks;
+    }
+  }
+  return melhor;
 }
