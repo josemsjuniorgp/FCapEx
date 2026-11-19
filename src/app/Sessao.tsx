@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../dados/supabase';
+import { supabase, tipoLinkInicial } from '../dados/supabase';
 import { carregarParametros, minhasEmpresas, type Empresa, type Moeda } from '../dados/api';
 import type { Parametros } from '../dominio/tipos';
 
@@ -17,6 +17,9 @@ interface Ctx {
   podeEditar: boolean;
   ehAdmin: boolean;
   sair: () => Promise<void>;
+  /** chegou por link de convite ou de recuperação: precisa escolher a senha */
+  definirSenha: 'invite' | 'recovery' | null;
+  senhaDefinida: () => void;
 }
 
 const C = createContext<Ctx | null>(null);
@@ -35,10 +38,12 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const [empresaId, setEmpresaId] = useState<string | null>(() => localStorage.getItem(CHAVE));
   const [parametros, setParametros] = useState<Parametros | null>(null);
   const [moedas, setMoedas] = useState<Moeda[]>([]);
+  const [definirSenha, setDefinirSenha] = useState<'invite' | 'recovery' | null>(
+    tipoLinkInicial === 'invite' || tipoLinkInicial === 'recovery' ? tipoLinkInicial : null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSessao(data.session); if (!data.session) setCarregando(false); });
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSessao(s));
+    const { data } = supabase.auth.onAuthStateChange((e, s) => { setSessao(s); if (e === 'PASSWORD_RECOVERY') setDefinirSenha('recovery'); });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -75,6 +80,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       podeEditar: empresa?.papel === 'admin' || empresa?.papel === 'orcamentista',
       ehAdmin: empresa?.papel === 'admin',
       sair,
+      definirSenha,
+      senhaDefinida: () => setDefinirSenha(null),
     }}>{children}</C.Provider>
   );
 }

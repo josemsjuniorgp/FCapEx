@@ -143,3 +143,12 @@ reset role;
 -- excluir a empresa inteira continua possível (cascata)
 delete from public.empresas where id = (select v from ids where k='B');
 select pg_temp.confere((select count(*) from public.membros where empresa_id = (select v from ids where k='B')) = 0, 'excluir empresa remove membros');
+
+-- 14) Convites: lista mostra pendentes; consulta de contas por e-mail é só do servidor
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+select pg_temp.confere((select pendente from public.listar_membros((select v from ids where k='A')) where email = 'eve@x'), 'membro que nunca entrou aparece como pendente');
+select pg_temp.deve_falhar('select * from public.conta_por_email(''eve@x'')', 'usuário logado consultar contas por e-mail');
+reset role;
+set role service_role;
+select pg_temp.confere((select not ja_entrou from public.conta_por_email('EVE@X')), 'servidor encontra a conta pelo e-mail');
+reset role;

@@ -45,10 +45,22 @@ export async function minhasEmpresas(): Promise<Empresa[]> {
 }
 export const criarEmpresa = async (nome: string) => ok(await supabase.rpc('criar_empresa', { nome })) as string;
 
-export interface Membro { usuario_id: string; email: string; papel: Papel }
+export interface Membro { usuario_id: string; email: string; papel: Papel; pendente: boolean }
 export const listarMembros = async (emp: string) => ok(await supabase.rpc('listar_membros', { emp })) as Membro[];
 export const adicionarMembro = async (emp: string, email: string, papel: Papel) =>
   ok(await supabase.rpc('adicionar_membro', { emp, email_usuario: email, novo_papel: papel }));
+/** Convida por e-mail (função de servidor). Conta ativa entra direto; nova recebe o e-mail de convite. */
+export async function convidarMembro(emp: string, email: string, papel: Papel): Promise<'adicionado' | 'convidado'> {
+  const { data, error } = await supabase.functions.invoke('convidar', {
+    body: { empresa_id: emp, email, papel, redirect: window.location.origin },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const corpo = await (error as { context?: Response }).context?.json(); if (corpo?.erro) msg = corpo.erro; } catch { /* sem corpo */ }
+    throw new Error(traduzErro(msg));
+  }
+  return (data as { situacao: 'adicionado' | 'convidado' }).situacao;
+}
 export const mudarPapel = async (emp: string, uid: string, papel: Papel) =>
   ok(await supabase.from('membros').update({ papel }).eq('empresa_id', emp).eq('usuario_id', uid));
 export const removerMembro = async (emp: string, uid: string) =>

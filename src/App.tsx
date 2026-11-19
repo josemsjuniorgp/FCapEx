@@ -4,6 +4,7 @@ import { ProvedorAviso } from './app/ui';
 import { NOME_PAPEL } from './dados/api';
 import { Biblioteca } from './telas/Biblioteca';
 import { Comparar } from './telas/Comparar';
+import { DefinirSenha } from './telas/DefinirSenha';
 import { EditorPx } from './telas/EditorPx';
 import { Empresas } from './telas/Empresas';
 import { Entrar } from './telas/Entrar';
@@ -20,9 +21,10 @@ const MENU: [string, string, string][] = [
 ];
 
 function Shell() {
-  const { sessao, carregando, empresa, empresas, escolherEmpresa, sair } = useSessao();
+  const { sessao, carregando, empresa, empresas, escolherEmpresa, sair, definirSenha } = useSessao();
   if (carregando) return <p className="note" style={{ padding: 20 }}>Carregando…</p>;
   if (!sessao) return <Entrar />;
+  if (definirSenha) return <DefinirSenha />;
   if (!empresa) return <Empresas />;
   return (
     <div className="app">
