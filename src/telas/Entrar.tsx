@@ -13,7 +13,7 @@ export function Entrar() {
     e.preventDefault(); setMsg(null); setOcupado(true);
     const r = modo === 'entrar'
       ? await supabase.auth.signInWithPassword({ email, password: senha })
-      : await supabase.auth.signUp({ email, password: senha });
+      : await supabase.auth.signUp({ email, password: senha, options: { emailRedirectTo: window.location.origin } });
     setOcupado(false);
     if (r.error) setMsg(traduzErro(r.error.message));
     else if (modo === 'cadastrar' && !r.data.session) setMsg('Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.');
