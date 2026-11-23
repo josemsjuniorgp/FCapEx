@@ -94,11 +94,11 @@ sha256 `8f09aa84…585e`). Este arquivo resume todos os pedidos e decisões daqu
 ### Tributos
 - Os pacotes **SERV-CIV-1, SERV-MEC-1 e TUK-ELE-2** são tributados como **serviço nacional** para os 5 tipos (F, C, S, T, M), qualquer que seja a natureza. Esses itens aparecem com a etiqueta "pacote".
 
-## Pendências e ideias em aberto
-1. **Persistência dos dados**, que se perdem ao recarregar. Opções oferecidas e ainda sem resposta:
-   - salvar só no navegador;
-   - salvar num banco de dados do artefato, para os dados aparecerem em qualquer computador e para quem receber o compartilhamento.
-2. Código da PX no padrão da empresa (ex.: `PX-A2-1000-G-PB-0001_Rev0`) ou digitado na criação. Foi oferecido e não houve resposta.
-3. Marcar e desmarcar à mão uma linha como título. Foi oferecido como opção.
-4. Taxa definitiva do EUR, hoje em R$ 6,00 provisório.
-5. Testar no navegador as últimas mudanças: Item PQ só visual, títulos vazios, coluna Nº da PQ e grupos por título.
+## Pendências e ideias em aberto (atualizado em 23/11/2026)
+Resolvidas no sistema web: persistência (Supabase), código da PX no padrão da empresa
+(Parâmetros › Código da PX), marcar/desmarcar título à mão, convite por e-mail e "Esqueci minha senha".
+
+1. Taxa definitiva do EUR (cada empresa ajusta em Parâmetros; padrão R$ 6,00).
+2. Mover o banco para São Paulo (hoje us-east-2) junto com a assinatura do Supabase Pro,
+   antes do primeiro cliente real (LGPD, latência, backup diário, sem pausa por inatividade).
+3. Importação de `.xls` antigo (hoje só `.xlsx`).
