@@ -7,7 +7,7 @@ import {
   listarProjetos, listarRevisoes, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
-import { COLUNAS, OPCOES, type Coluna } from '../dominio/colunas';
+import { COLUNAS, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
 import type { Resultado } from '../dominio/tipos';
@@ -101,6 +101,15 @@ export function EditorPx() {
     if (!px || !t) return;
     setPerguntar(null);
     if (await acao(() => emitirRevisao(px.id, t.ger), `Rev ${revAtual?.numero} emitida. A edição continua na Rev ${(revAtual?.numero ?? 0) + 1}.`)) carregar();
+  }
+
+  /** Insere ou exclui uma coluna desta PX (para todos). Os valores dos itens ficam guardados. */
+  async function mudarColuna(k: string, incluir: boolean) {
+    if (!px) return;
+    const nova = COLUNAS.map(c => c.k).filter(c => (c === k ? incluir : modelo.has(c)) || OBRIGATORIAS.includes(c));
+    const antes = px;
+    setPx({ ...px, colunas: nova });
+    if (!(await acao(() => atualizarPx(px.id, { colunas: nova }), incluir ? 'Coluna inserida.' : 'Coluna excluída.'))) setPx(antes);
   }
 
   function ocultar(k: string, sim: boolean) {
@@ -216,7 +225,27 @@ export function EditorPx() {
           {painel === 'colunas' && (
             <>
               <div className="panel-head"><h2>Colunas</h2><button className="btn small" onClick={() => setPainel(null)}>Fechar</button></div>
-              <span className="note">Ocultar uma coluna só muda a sua visualização, não o modelo da PX.</span>
+              {podeEditar && (
+                <>
+                  <h3>Colunas desta PX</h3>
+                  <span className="note">Inserir ou excluir colunas vale para todos que abrem esta PX. Excluir não apaga os valores: ao inserir de novo, eles voltam.</span>
+                  {[...new Set(COLUNAS.map(c => c.g))].map(g => (
+                    <div className="group-box" key={'px-' + g}><strong>{g}</strong>
+                      {COLUNAS.filter(c => c.g === g).map(c => {
+                        const fixa = OBRIGATORIAS.includes(c.k);
+                        return (
+                          <label key={c.k}>
+                            <input type="checkbox" disabled={fixa} checked={fixa || modelo.has(c.k)} onChange={e => mudarColuna(c.k, e.target.checked)} />
+                            {c.h}{fixa && <span className="k">sempre</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  <h3>Ocultar só na minha tela</h3>
+                </>
+              )}
+              <span className="note">Ocultar uma coluna só muda a sua visualização, não a PX.</span>
               {[...new Set(COLUNAS.filter(c => modelo.has(c.k)).map(c => c.g))].map(g => (
                 <div className="group-box" key={g}><strong>{g}</strong>
                   {COLUNAS.filter(c => c.g === g && modelo.has(c.k)).map(c => (

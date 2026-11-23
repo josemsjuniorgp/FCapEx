@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSessao } from '../app/Sessao';
 import { Dialogo, useAcao, useAviso } from '../app/ui';
 import {
@@ -68,7 +68,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
   }
 
   if (!podeEditar) return null;
-  const opt = (chave: string, ativo: boolean, onEscolher: () => void, titulo: string, desc: string) => (
+  const opt = (chave: string, ativo: boolean, onEscolher: () => void, titulo: string, desc: ReactNode) => (
     <label className="mopt" key={chave}>
       <input type="radio" name="modelo" checked={ativo} onChange={onEscolher} />
       <span><b>{titulo}</b><small>{desc}</small></span>
@@ -96,7 +96,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
         <strong>Modelo</strong>
         <div className="mopts">
           {modelos.map(m => opt(m.id, modo?.tipo === 'modelo' && modo.id === m.id, () => setModo({ tipo: 'modelo', id: m.id }),
-            m.nome, `${m.colunas.length} colunas${m.empresa_id ? ' · modelo da empresa' : ''}`))}
+            m.nome, <>{m.colunas.length} colunas{m.empresa_id ? ' · modelo da empresa' : ''}<br />Você pode inserir ou excluir colunas</>))}
           {opt('importar', modo?.tipo === 'importar', () => setModo({ tipo: 'importar' }), 'Importar modelo', 'Lê as colunas de um Excel')}
           {opt('montar', modo?.tipo === 'montar', () => setModo({ tipo: 'montar' }), 'Montar no sistema', 'Escolha as colunas')}
         </div>

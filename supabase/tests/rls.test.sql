@@ -37,7 +37,7 @@ select pg_temp.confere((select count(*) from public.empresas) = 1, 'Alice vê s�
 select pg_temp.confere((select count(*) from public.clientes) = 0, 'Alice não vê clientes da B');
 select pg_temp.confere((select count(*) from public.moedas) = 3, 'parâmetros padrão: 3 moedas');
 select pg_temp.confere((select count(*) from public.pacotes_servico) = 3, 'parâmetros padrão: 3 pacotes');
-select pg_temp.confere((select count(*) from public.modelos where empresa_id is null) = 2, 'modelos do sistema visíveis');
+select pg_temp.confere((select string_agg(nome, ',') from public.modelos where empresa_id is null) = 'PX Padrão', 'só o modelo PX Padrão do sistema');
 
 -- 3) Alice não escreve na empresa B
 select pg_temp.deve_falhar(format($q$insert into public.clientes (empresa_id, nome) values (%L, 'invasor')$q$, (select v from ids where k='B')), 'Alice criar cliente na B');

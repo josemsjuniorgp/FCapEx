@@ -124,7 +124,7 @@ export const lerPx = async (id: string) => ok(await supabase.from('pxs').select(
 /** Cria a PX com o código digitado pelo usuário (texto livre, único na empresa). */
 export const criarPx = async (projeto: string, codigo: string, nome: string, modelo_nome: string, colunas: string[]) =>
   ok(await supabase.rpc('criar_px', { projeto, nome, modelo_nome, colunas, observacoes: '', codigo_manual: codigo.trim() })) as string;
-export const atualizarPx = async (id: string, campos: Partial<Pick<Px, 'nome' | 'observacoes' | 'projeto_id' | 'codigo'>>) =>
+export const atualizarPx = async (id: string, campos: Partial<Pick<Px, 'nome' | 'observacoes' | 'projeto_id' | 'codigo' | 'colunas'>>) =>
   ok(await supabase.from('pxs').update({ ...campos, atualizado_em: new Date().toISOString() }).eq('id', id));
 export const excluirPx = async (id: string) => ok(await supabase.from('pxs').delete().eq('id', id));
 
