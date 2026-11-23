@@ -43,7 +43,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
       const achadas = new Set<string>([...OBRIGATORIAS, ...await colunasDoModelo(await f.arrayBuffer())]);
       if (achadas.size === OBRIGATORIAS.length) { avisar('Não encontrei cabeçalhos reconhecíveis no arquivo.'); return; }
       setCols(achadas); setArquivo(f.name); setNomeModelo(f.name.replace(/\.xlsx$/i, ''));
-      avisar(`${achadas.size} colunas reconhecidas em ${f.name}. Ajuste a seleção se precisar.`);
+      avisar(`${achadas.size} colunas lidas de ${f.name}.`);
     } catch { avisar(`Não consegui ler ${f.name}. Use um arquivo .xlsx sem senha.`); }
   }
 
@@ -102,13 +102,21 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
         </div>
 
         {modo?.tipo === 'importar' && (
-          <label className="fld">Arquivo do modelo (.xlsx){arquivo && <span> — {arquivo}</span>}
+          <label className="fld">Arquivo do modelo (.xlsx)
             <input type="file" accept=".xlsx" onChange={e => e.target.files?.[0] && importarModelo(e.target.files[0])} />
           </label>
         )}
-        {modo && modo.tipo !== 'modelo' && (
+        {modo?.tipo === 'importar' && arquivo && (
+          <div className="group-box stack" style={{ gap: 6 }}>
+            <strong>Colunas que a PX vai ter ({colunasFinais.length})</strong>
+            <span>{COLUNAS.filter(c => colunasFinais.includes(c.k)).map(c => c.h).join(' · ')}</span>
+            <span className="note">Lidas do cabeçalho do Excel, mais as obrigatórias (Nº, Descrição, Quantidade, Preço unit., Total geral e Check).
+              Depois de criar, dá para inserir ou excluir colunas pelo botão "Colunas" da grade.</span>
+          </div>
+        )}
+        {(modo?.tipo === 'montar' || (modo?.tipo === 'importar' && arquivo)) && (
           <>
-            <div className="colpick">
+            {modo.tipo === 'montar' && <div className="colpick">
               {GRUPOS.map(g => (
                 <div className="group-box" key={g}><strong>{g}</strong>
                   {COLUNAS.filter(c => c.g === g).map(c => {
@@ -123,7 +131,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
                   })}
                 </div>
               ))}
-            </div>
+            </div>}
             <label className="row"><input type="checkbox" checked={salvar} onChange={e => setSalvar(e.target.checked)} />
               Salvar como modelo da empresa
               {salvar && <input className="in" value={nomeModelo} onChange={e => setNomeModelo(e.target.value)} placeholder="Nome do modelo" />}
