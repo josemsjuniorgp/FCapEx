@@ -71,3 +71,25 @@ npx supabase db push
 
 Depois, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` na hospedagem do site (ex.: Vercel)
 e rode `npm run build`.
+
+## Produção (configuração atual)
+
+| Item | Onde |
+|---|---|
+| Site | https://www.fcapex.com.br (Vercel; `fcapex.com.br` redireciona para o `www`) |
+| Domínio | Registro.br, com DNS administrado pela Vercel |
+| Banco, login e arquivos | Supabase, projeto `FCapEx` (ref `fpqhmdszcejrspezvvtb`, região us-east-2) |
+| E-mails do sistema | Resend via SMTP, remetente `nao-responda@fcapex.com.br`, limite de 100/hora no Supabase |
+| Modelos de e-mail | `supabase/templates/` (aplicados pela API de configuração de autenticação) |
+| Função de servidor | `supabase/functions/convidar` (convite por e-mail) |
+
+**Publicar uma mudança:** enviar para o GitHub publica o site sozinho na Vercel.
+Migrações novas do banco e a função de servidor precisam ser aplicadas no Supabase:
+
+```bash
+npx supabase db push
+```
+
+```bash
+npx supabase functions deploy convidar
+```
