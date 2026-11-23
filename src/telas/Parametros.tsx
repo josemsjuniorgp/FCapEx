@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSessao } from '../app/Sessao';
 import { nf, useAcao } from '../app/ui';
 import { adicionarPacote, excluirMoeda, excluirPacote, salvarAliquota, salvarMoeda, salvarPadraoCodigo } from '../dados/api';
-import { camposDoPadrao, montarCodigo, validarPadrao } from '../dominio/codigo';
+import { camposDoPadrao, montarCodigo, PADRAO_INICIAL, padraoParaPartes, partesParaPadrao, validarPadrao, type Parte } from '../dominio/codigo';
 import { parseNum } from '../dominio/normalizacao';
 import type { Regime } from '../dominio/tipos';
 
@@ -92,27 +92,112 @@ export function Parametros() {
 }
 
 const EXEMPLO = 'PX-{campo:Área}-{campo:Projeto}-{campo:Disciplina}-{campo:Sigla}-{seq:4}';
+const NOME_SEP: Record<string, string> = { '-': 'hífen  -', '_': 'sublinhado  _', '.': 'ponto  .', '/': 'barra  /', '': 'nenhum' };
+const TIPOS_PARTE: [Parte['tipo'], string][] = [['texto', 'Texto fixo'], ['campo', 'Campo (perguntado ao criar)'], ['seq', 'Número sequencial'], ['ano', 'Ano']];
+
+function novaParte(tipo: Parte['tipo']): Parte {
+  if (tipo === 'texto') return { tipo, valor: 'PX' };
+  if (tipo === 'campo') return { tipo, nome: 'Campo' };
+  if (tipo === 'seq') return { tipo, digitos: 4 };
+  return { tipo };
+}
 
 function CodigoPx({ padraoAtual, editavel, onSalvar }: { padraoAtual: string; editavel: boolean; onSalvar: (p: string) => Promise<void> }) {
-  const [padrao, setPadrao] = useState(padraoAtual);
+  const inicial = padraoParaPartes(padraoAtual) ?? padraoParaPartes(PADRAO_INICIAL)!;
+  const [partes, setPartes] = useState<Parte[]>(inicial.partes);
+  const [sep, setSep] = useState(inicial.sep);
+  const [avancado, setAvancado] = useState(!padraoParaPartes(padraoAtual));
+  const [texto, setTexto] = useState(padraoAtual);
+  const padrao = avancado ? texto : partesParaPadrao(partes, sep);
   const erros = validarPadrao(padrao);
-  const campos = camposDoPadrao(padrao);
-  const exemplo = montarCodigo(padrao, 1, Object.fromEntries(campos.map(c => [c, c.slice(0, 3)])));
+  if (!avancado && partes.some(p => (p.tipo === 'texto' && !p.valor.trim()) || (p.tipo === 'campo' && !p.nome.trim())))
+    erros.push('Preencha o texto ou o nome de todas as partes.');
+  const nomes = camposDoPadrao(padrao);
+  const exemplo = montarCodigo(padrao.replace(/\{campo:([^}]+)\}/g, '‹$1›'), 1, {});
+
+  const mudar = (i: number, p: Parte) => setPartes(partes.map((x, j) => (j === i ? p : x)));
+  const mover = (i: number, d: number) => { const l = [...partes]; [l[i], l[i + d]] = [l[i + d], l[i]]; setPartes(l); };
+  const carregar = (pd: string) => { const r = padraoParaPartes(pd); if (r) { setPartes(r.partes); setSep(r.sep); setAvancado(false); } setTexto(pd); };
+
   return (
-    <section className="card stack" style={{ padding: 16, gap: 10 }}>
+    <section className="card stack" style={{ padding: 16, gap: 12 }}>
       <h2>Código da PX</h2>
-      <p className="note">Define como o código de cada PX nova é montado. A revisão aparece separada (· Rev 0, Rev 1…).
-        Marcadores: <span className="mono">{'{seq:4}'}</span> número sequencial com 4 dígitos, gerado sozinho;
-        {' '}<span className="mono">{'{campo:Nome}'}</span> campo perguntado ao criar a PX;
-        {' '}<span className="mono">{'{ano}'}</span> ano atual.</p>
-      <div className="row">
-        <input className="in mono" style={{ flex: 1, minWidth: 260 }} value={padrao} disabled={!editavel} onChange={e => setPadrao(e.target.value)} />
-        {editavel && <button className="btn primary" disabled={!!erros.length || padrao === padraoAtual} onClick={() => onSalvar(padrao.trim())}>Salvar padrão</button>}
+      <p className="note">O código de cada PX nova é montado juntando as partes abaixo, na ordem. Os <b>campos</b> são perguntados
+        na hora de criar a PX (ex.: Área = A2). O <b>número sequencial</b> é gerado sozinho (0001, 0002…) e garante que o código nunca se repete.
+        A revisão aparece separada (· Rev 0, Rev 1…).</p>
+
+      <div className="cover" style={{ justifyContent: 'space-between' }}>
+        <span className="note">Exemplo do código:</span>
+        <b className="mono" style={{ fontSize: 18 }}>{erros.length ? '—' : exemplo}</b>
+        {nomes.length > 0 && <span className="note">Ao criar a PX serão pedidos: {nomes.join(', ')}</span>}
       </div>
-      {editavel && padrao !== EXEMPLO && <button className="linkbtn" style={{ alignSelf: 'flex-start' }} onClick={() => setPadrao(EXEMPLO)}>Usar o exemplo {EXEMPLO}</button>}
+
+      {!avancado && (
+        <>
+          <table className="t">
+            <thead><tr><th>#</th><th>Tipo da parte</th><th>Conteúdo</th><th /></tr></thead>
+            <tbody>
+              {partes.map((p, i) => (
+                <tr key={i}>
+                  <td className="mono">{i + 1}</td>
+                  <td>
+                    <select value={p.tipo} disabled={!editavel} onChange={e => mudar(i, novaParte(e.target.value as Parte['tipo']))}>
+                      {TIPOS_PARTE.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    {p.tipo === 'texto' && <input className="in mono" disabled={!editavel} value={p.valor} placeholder="ex.: PX" onChange={e => mudar(i, { ...p, valor: e.target.value })} />}
+                    {p.tipo === 'campo' && <input className="in" disabled={!editavel} value={p.nome} placeholder="nome do campo, ex.: Área" onChange={e => mudar(i, { ...p, nome: e.target.value })} />}
+                    {p.tipo === 'seq' && (
+                      <select value={p.digitos} disabled={!editavel} onChange={e => mudar(i, { ...p, digitos: +e.target.value })}>
+                        {[2, 3, 4, 5, 6].map(d => <option key={d} value={d}>{d} dígitos ({'1'.padStart(d, '0')})</option>)}
+                      </select>
+                    )}
+                    {p.tipo === 'ano' && <span className="note">ano atual ({new Date().getFullYear()})</span>}
+                  </td>
+                  <td>{editavel && (
+                    <div className="row-actions">
+                      <button className="btn small" disabled={i === 0} aria-label="Subir" onClick={() => mover(i, -1)}>↑</button>
+                      <button className="btn small" disabled={i === partes.length - 1} aria-label="Descer" onClick={() => mover(i, 1)}>↓</button>
+                      <button className="btn small danger" disabled={partes.length === 1} onClick={() => setPartes(partes.filter((_, j) => j !== i))}>Remover</button>
+                    </div>)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {editavel && (
+            <div className="row">
+              <button className="btn" onClick={() => setPartes([...partes.filter(x => x.tipo !== 'seq'), { tipo: 'campo', nome: '' }, ...partes.filter(x => x.tipo === 'seq')])}>+ Adicionar campo</button>
+              <button className="btn" onClick={() => setPartes([...partes, novaParte('texto')])}>+ Adicionar texto fixo</button>
+              <span className="spacer" />
+              <label className="row">Separador entre as partes
+                <select value={sep} onChange={e => setSep(e.target.value)}>
+                  {Object.entries(NOME_SEP).map(([v, n]) => <option key={n} value={v}>{n}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
+        </>
+      )}
+
+      {avancado && (
+        <label className="stack" style={{ gap: 4 }}><span className="note">Padrão em texto (marcadores: {'{seq:4}'}, {'{campo:Nome}'}, {'{ano}'})</span>
+          <input className="in mono" disabled={!editavel} value={texto} onChange={e => setTexto(e.target.value)} />
+        </label>
+      )}
+
       {erros.map(e => <div key={e} className="banner">{e}</div>)}
-      {!erros.length && <span className="note">Exemplo da primeira PX: <b className="mono">{exemplo}</b>
-        {campos.length > 0 && <> · campos pedidos na criação: {campos.join(', ')}</>}</span>}
+
+      {editavel && (
+        <div className="row">
+          <button className="linkbtn" onClick={() => carregar(EXEMPLO)}>Usar o exemplo PX-Área-Projeto-Disciplina-Sigla-0001</button>
+          <button className="linkbtn" onClick={() => carregar(PADRAO_INICIAL)}>Voltar ao simples PX-0001</button>
+          <button className="linkbtn" onClick={() => { if (avancado) carregar(texto); else { setTexto(padrao); setAvancado(true); } }}>
+            {avancado ? 'Voltar ao montador visual' : 'Modo avançado (texto)'}</button>
+          <span className="spacer" />
+          <button className="btn primary" disabled={!!erros.length || padrao === padraoAtual} onClick={() => onSalvar(padrao.trim())}>Salvar padrão</button>
+        </div>
+      )}
       <span className="note">Mudar o padrão só afeta as PX criadas depois. As existentes mantêm o código.</span>
     </section>
   );

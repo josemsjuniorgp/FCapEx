@@ -29,3 +29,31 @@ describe('código da PX', () => {
     expect(validarPadrao('PX-{seq:4}-{area}').join()).toContain('chaves');
   });
 });
+
+import { padraoParaPartes, partesParaPadrao, type Parte } from './codigo';
+
+describe('montador visual do código', () => {
+  const partes: Parte[] = [
+    { tipo: 'texto', valor: 'PX' }, { tipo: 'campo', nome: 'Área' }, { tipo: 'campo', nome: 'Projeto' },
+    { tipo: 'campo', nome: 'Disciplina' }, { tipo: 'campo', nome: 'Sigla' }, { tipo: 'seq', digitos: 4 },
+  ];
+  it('partes viram o padrão', () => {
+    expect(partesParaPadrao(partes, '-')).toBe(PADRAO);
+  });
+  it('padrão volta a ser as mesmas partes', () => {
+    expect(padraoParaPartes(PADRAO)).toEqual({ partes, sep: '-' });
+    expect(padraoParaPartes('PX-{seq:4}')).toEqual({ partes: [{ tipo: 'texto', valor: 'PX' }, { tipo: 'seq', digitos: 4 }], sep: '-' });
+  });
+  it('outros separadores e sem separador', () => {
+    expect(padraoParaPartes('PX_{ano}_{seq:3}')?.sep).toBe('_');
+    expect(padraoParaPartes('PX{seq:4}')).toEqual({ partes: [{ tipo: 'texto', valor: 'PX' }, { tipo: 'seq', digitos: 4 }], sep: '' });
+  });
+  it('padrão com separadores misturados vira partes sem separador', () => {
+    const r = padraoParaPartes('PX-{campo:A}_{seq:4}')!;
+    expect(r.sep).toBe('');
+    expect(partesParaPadrao(r.partes, r.sep)).toBe('PX-{campo:A}_{seq:4}');
+  });
+  it('chaves soltas só no modo avançado', () => {
+    expect(padraoParaPartes('PX-{area')).toBeNull();
+  });
+});
