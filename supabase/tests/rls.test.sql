@@ -169,3 +169,11 @@ select pg_temp.como('00000000-0000-0000-0000-00000000000d');
 update public.empresas set padrao_codigo = 'X-{seq}' where id = (select v from ids where k='A');
 reset role;
 select pg_temp.confere((select padrao_codigo from public.empresas where id = (select v from ids where k='A')) like 'PX-{campo:Área}%', 'orçamentista não altera o padrão');
+
+-- 16) Código livre: qualquer texto até 250 caracteres, sem repetir na empresa
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+insert into ids values ('pxl', public.criar_px((select v from ids where k='projA'), 'Livre', 'PX Padrão v1', array['seq'], '', '{}'::jsonb, 'ORÇ 2026/15 – rev. cliente'));
+select pg_temp.confere((select codigo from public.pxs where id = (select v from ids where k='pxl')) = 'ORÇ 2026/15 – rev. cliente', 'código livre com espaços e símbolos');
+select pg_temp.deve_falhar(format($q$select public.criar_px(%L, 'x', 'm', array['seq'], '', '{}'::jsonb, %L)$q$, (select v from ids where k='projA'), repeat('A', 251)), 'código com mais de 250 caracteres');
+select pg_temp.deve_falhar(format($q$update public.pxs set codigo = '' where id = %L$q$, (select v from ids where k='pxl')), 'código vazio na edição');
+reset role;

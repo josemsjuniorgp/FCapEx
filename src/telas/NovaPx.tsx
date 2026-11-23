@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSessao } from '../app/Sessao';
 import { Dialogo, useAcao, useAviso } from '../app/ui';
 import {
-  criarPx, inserirItens, listarItens, listarModelos, listarRevisoes, proximoPxPrevisto, salvarModelo,
+  criarPx, inserirItens, listarItens, listarModelos, listarRevisoes, salvarModelo,
   type Modelo, type Projeto, type Px,
 } from '../dados/api';
 import { COLUNAS, OBRIGATORIAS } from '../dominio/colunas';
 import { colunasDoModelo } from '../dominio/excel';
-import { camposDoPadrao, montarCodigo } from '../dominio/codigo';
 
 type Modo = { tipo: 'modelo'; id: string } | { tipo: 'montar' } | { tipo: 'importar' };
 const GRUPOS = [...new Set(COLUNAS.map(c => c.g))];
@@ -28,18 +27,11 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
   const [nomeModelo, setNomeModelo] = useState('');
   const [copiarDe, setCopiarDe] = useState('');
   const [ocupado, setOcupado] = useState(false);
-  const [campos, setCampos] = useState<Record<string, string>>({});
-  const [manual, setManual] = useState(false);
-  const [codigoManual, setCodigoManual] = useState('');
-  const [proximo, setProximo] = useState<number | null>(null);
-  const padrao = empresa?.padrao_codigo ?? 'PX-{seq:4}';
-  const nomesCampos = camposDoPadrao(padrao);
-  const previa = proximo === null ? '' : montarCodigo(padrao, proximo, campos);
+  const [codigo, setCodigo] = useState('');
 
   useEffect(() => {
     listarModelos().then(m => { setModelos(m); if (m[0]) setModo({ tipo: 'modelo', id: m[0].id }); });
-    if (empresa) proximoPxPrevisto(empresa.id).then(setProximo).catch(() => setProximo(null));
-  }, [empresa]);
+  }, []);
 
   const colunasFinais = useMemo(() => {
     if (modo?.tipo === 'modelo') return modelos.find(m => m.id === modo.id)?.colunas ?? [];
@@ -63,7 +55,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
       : (salvar && nomeModelo.trim()) ? nomeModelo.trim() : modo.tipo === 'importar' ? `Importado de ${arquivo}` : 'Montado no sistema';
     const okk = await acao(async () => {
       if (modo.tipo !== 'modelo' && salvar && nomeModelo.trim()) await salvarModelo(empresa.id, nomeModelo.trim(), colunasFinais);
-      id = await criarPx(projeto, nome.trim(), nomeMod, colunasFinais, campos, manual ? codigoManual.trim() : null);
+      id = await criarPx(projeto, codigo, nome.trim(), nomeMod, colunasFinais);
       if (copiarDe) {
         const origem = (await listarRevisoes(copiarDe)).find(r => !r.emitida_em)!;
         const destino = (await listarRevisoes(id))[0];
@@ -87,8 +79,11 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
     <Dialogo titulo="Nova PX" onFechar={onFechar}>
       <div className="pxform stack">
         <div className="row" style={{ alignItems: 'flex-start' }}>
+          <label className="fld" style={{ flex: 2, minWidth: 220 }}>Código da PX (obrigatório)
+            <input className="in mono" autoFocus maxLength={250} value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="Ex.: PX-A1-1000-G-PB-0001" />
+          </label>
           <label className="fld" style={{ flex: 2, minWidth: 220 }}>Nome da PX (obrigatório)
-            <input className="in" autoFocus value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Estimativa classe 3" />
+            <input className="in" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Estimativa classe 3" />
           </label>
           <label className="fld" style={{ flex: 1, minWidth: 200 }}>Projeto
             <select value={projeto} onChange={e => setProjeto(e.target.value)}>
@@ -96,22 +91,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
             </select>
           </label>
         </div>
-        <div className="group-box stack" style={{ gap: 8 }}>
-          <strong>Código da PX</strong>
-          {!manual && nomesCampos.length > 0 && (
-            <div className="row" style={{ alignItems: 'flex-end' }}>
-              {nomesCampos.map(c => (
-                <label className="fld" key={c} style={{ width: 130 }}>{c}
-                  <input className="in mono" value={campos[c] ?? ''} onChange={e => setCampos({ ...campos, [c]: e.target.value })} />
-                </label>
-              ))}
-            </div>
-          )}
-          {!manual && <span className="note">Código: <b className="mono">{previa || '…'}</b> · nasce na Rev 0. O número final é reservado ao criar.</span>}
-          <label className="row"><input type="checkbox" checked={manual} onChange={e => { setManual(e.target.checked); if (e.target.checked && !codigoManual) setCodigoManual(previa); }} />
-            Digitar o código manualmente</label>
-          {manual && <input className="in mono" value={codigoManual} onChange={e => setCodigoManual(e.target.value)} placeholder="PX-..." />}
-        </div>
+        <span className="note">Digite o código do jeito que quiser (letras, números, símbolos, até 250 caracteres). Ele não pode repetir o de outra PX da empresa. A PX nasce na Rev 0.</span>
 
         <strong>Modelo</strong>
         <div className="mopts">
@@ -161,7 +141,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
         <div className="row">
           <span className="note">{colunasFinais.length} colunas</span><span className="spacer" />
           <button className="btn" onClick={onFechar}>Cancelar</button>
-          <button className="btn primary" disabled={!nome.trim() || !projeto || !modo || ocupado || (modo.tipo === 'importar' && !arquivo) || (manual && !codigoManual.trim())} onClick={criar}>
+          <button className="btn primary" disabled={!nome.trim() || !projeto || !modo || ocupado || (modo.tipo === 'importar' && !arquivo) || !codigo.trim()} onClick={criar}>
             Criar PX
           </button>
         </div>
