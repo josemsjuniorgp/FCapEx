@@ -197,7 +197,11 @@ export function EditorPx() {
                       <td className="rowdel">
                         {perguntar === 'del:' + it.id
                           ? <Confirmar msg="Excluir este item?" sim="Excluir" onSim={() => apagarItem(it.id)} onNao={() => setPerguntar(null)} />
-                          : <button className="btn small danger" onClick={e => { e.stopPropagation(); setPerguntar('del:' + it.id); }}>Excluir</button>}
+                          : <div className="row-actions">
+                              <button className="btn small" title={it.titulo ? 'Voltar a ser item: os valores guardados reaparecem' : 'Transformar em linha de título (agrupador)'}
+                                onClick={e => { e.stopPropagation(); salvarCampo(it.id, 'titulo', !it.titulo); }}>{it.titulo ? 'Virar item' : 'Virar título'}</button>
+                              <button className="btn small danger" onClick={e => { e.stopPropagation(); setPerguntar('del:' + it.id); }}>Excluir</button>
+                            </div>}
                       </td>
                     )}
                   </tr>
@@ -339,16 +343,17 @@ function DadosPx({ px, projetos, emitidas, revAtual, podeEditar, onSalvo, onComp
 }) {
   const acao = useAcao();
   const [nome, setNome] = useState(px.nome);
+  const [codigo, setCodigo] = useState(px.codigo);
   const [obs, setObs] = useState(px.observacoes);
   const [proj, setProj] = useState(px.projeto_id);
   const [apagar, setApagar] = useState(false);
-  useEffect(() => { setNome(px.nome); setObs(px.observacoes); setProj(px.projeto_id); }, [px]);
-  const mudou = nome !== px.nome || obs !== px.observacoes || proj !== px.projeto_id;
+  useEffect(() => { setNome(px.nome); setCodigo(px.codigo); setObs(px.observacoes); setProj(px.projeto_id); }, [px]);
+  const mudou = nome !== px.nome || codigo !== px.codigo || obs !== px.observacoes || proj !== px.projeto_id;
 
   return (
     <>
       <div className="panel-head"><h2>Dados da PX</h2></div>
-      <label className="fld">Código<input className="in mono" value={px.codigo} disabled /></label>
+      <label className="fld">Código<input className="in mono" value={codigo} disabled={!podeEditar} onChange={e => setCodigo(e.target.value)} /></label>
       <label className="fld">Nome<input className="in" value={nome} disabled={!podeEditar} onChange={e => setNome(e.target.value)} /></label>
       <label className="fld">Projeto
         <select value={proj} disabled={!podeEditar} onChange={e => setProj(e.target.value)}>
@@ -357,8 +362,8 @@ function DadosPx({ px, projetos, emitidas, revAtual, podeEditar, onSalvo, onComp
       </label>
       <label className="fld">Modelo<input className="in" value={`${px.modelo_nome} (${px.colunas.length} colunas)`} disabled /></label>
       <label className="fld">Observações<textarea className="in" value={obs} disabled={!podeEditar} onChange={e => setObs(e.target.value)} /></label>
-      {podeEditar && <button className="btn primary" disabled={!mudou || !nome.trim()}
-        onClick={async () => { if (await acao(() => atualizarPx(px.id, { nome: nome.trim(), observacoes: obs, projeto_id: proj }), 'Dados salvos.')) onSalvo(); }}>Salvar</button>}
+      {podeEditar && <button className="btn primary" disabled={!mudou || !nome.trim() || !codigo.trim()}
+        onClick={async () => { if (await acao(() => atualizarPx(px.id, { nome: nome.trim(), codigo: codigo.trim(), observacoes: obs, projeto_id: proj }), 'Dados salvos.')) onSalvo(); }}>Salvar</button>}
       <div className="group-box stack" style={{ gap: 8 }}>
         <strong>Revisões</strong>
         {emitidas.map(r => (

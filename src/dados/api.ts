@@ -7,7 +7,7 @@ export const NOME_PAPEL: Record<Papel, string> = {
   admin: 'Administrador', orcamentista: 'Orçamentista', revisor: 'Revisor', leitura: 'Somente leitura',
 };
 
-export interface Empresa { id: string; nome: string; papel: Papel }
+export interface Empresa { id: string; nome: string; papel: Papel; padrao_codigo: string }
 export interface Cliente { id: string; nome: string }
 export interface Projeto { id: string; cliente_id: string; nome: string }
 export interface Modelo { id: string; empresa_id: string | null; nome: string; colunas: string[] }
@@ -30,6 +30,8 @@ function ok<T>(r: { data: T; error: { message: string } | null }): T {
 
 export function traduzErro(msg: string): string {
   if (/row-level security|permission denied/i.test(msg)) return 'Você não tem permissão para esta ação.';
+  if (/pxs_empresa_id_codigo_key/i.test(msg)) return 'Já existe uma PX com esse código.';
+  if (/padrao_codigo_check|empresas_padrao_codigo_check/i.test(msg)) return 'Padrão de código inválido: inclua o sequencial {seq}.';
   if (/duplicate key|unique/i.test(msg)) return 'Já existe um registro com esse nome.';
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
   return msg;
@@ -38,9 +40,9 @@ export function traduzErro(msg: string): string {
 // ------------------------------------------------------------------ empresas e equipe
 export async function minhasEmpresas(): Promise<Empresa[]> {
   const { data: u } = await supabase.auth.getUser();
-  const rows = ok(await supabase.from('membros').select('papel, empresas(id, nome)').eq('usuario_id', u.user?.id ?? ''));
-  return (rows as unknown as { papel: Papel; empresas: { id: string; nome: string } }[])
-    .map(r => ({ id: r.empresas.id, nome: r.empresas.nome, papel: r.papel }))
+  const rows = ok(await supabase.from('membros').select('papel, empresas(id, nome, padrao_codigo)').eq('usuario_id', u.user?.id ?? ''));
+  return (rows as unknown as { papel: Papel; empresas: { id: string; nome: string; padrao_codigo: string } }[])
+    .map(r => ({ id: r.empresas.id, nome: r.empresas.nome, papel: r.papel, padrao_codigo: r.empresas.padrao_codigo }))
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 export const criarEmpresa = async (nome: string) => ok(await supabase.rpc('criar_empresa', { nome })) as string;
@@ -119,9 +121,13 @@ const CAMPOS_PX = 'id, projeto_id, codigo, nome, modelo_nome, colunas, observaco
 export const listarPxs = async (emp: string) =>
   ok(await supabase.from('pxs').select(CAMPOS_PX).eq('empresa_id', emp).order('codigo')) as Px[];
 export const lerPx = async (id: string) => ok(await supabase.from('pxs').select(CAMPOS_PX).eq('id', id).single()) as Px;
-export const criarPx = async (projeto: string, nome: string, modelo_nome: string, colunas: string[], observacoes = '') =>
-  ok(await supabase.rpc('criar_px', { projeto, nome, modelo_nome, colunas, observacoes })) as string;
-export const atualizarPx = async (id: string, campos: Partial<Pick<Px, 'nome' | 'observacoes' | 'projeto_id'>>) =>
+export const criarPx = async (projeto: string, nome: string, modelo_nome: string, colunas: string[],
+  campos: Record<string, string> = {}, codigo_manual: string | null = null) =>
+  ok(await supabase.rpc('criar_px', { projeto, nome, modelo_nome, colunas, observacoes: '', campos, codigo_manual })) as string;
+export const proximoPxPrevisto = async (emp: string) => ok(await supabase.rpc('proximo_px_previsto', { emp })) as number;
+export const salvarPadraoCodigo = async (emp: string, padrao_codigo: string) =>
+  ok(await supabase.from('empresas').update({ padrao_codigo }).eq('id', emp));
+export const atualizarPx = async (id: string, campos: Partial<Pick<Px, 'nome' | 'observacoes' | 'projeto_id' | 'codigo'>>) =>
   ok(await supabase.from('pxs').update({ ...campos, atualizado_em: new Date().toISOString() }).eq('id', id));
 export const excluirPx = async (id: string) => ok(await supabase.from('pxs').delete().eq('id', id));
 

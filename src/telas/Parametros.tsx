@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useSessao } from '../app/Sessao';
 import { nf, useAcao } from '../app/ui';
-import { adicionarPacote, excluirMoeda, excluirPacote, salvarAliquota, salvarMoeda } from '../dados/api';
+import { adicionarPacote, excluirMoeda, excluirPacote, salvarAliquota, salvarMoeda, salvarPadraoCodigo } from '../dados/api';
+import { camposDoPadrao, montarCodigo, validarPadrao } from '../dominio/codigo';
 import { parseNum } from '../dominio/normalizacao';
 import type { Regime } from '../dominio/tipos';
 
@@ -9,7 +10,7 @@ const REGIMES: [Regime, string][] = [['NF', 'Nacional · fornecimento'], ['IF', 
 
 /** Parâmetros de cálculo da empresa: câmbio, alíquotas e pacotes de serviço. */
 export function Parametros() {
-  const { empresa, parametros, moedas, ehAdmin, recarregarParametros } = useSessao();
+  const { empresa, parametros, moedas, ehAdmin, recarregarParametros, recarregarEmpresas } = useSessao();
   const acao = useAcao();
   const [nova, setNova] = useState({ codigo: '', nome: '', simbolo: '', cambio: '' });
   const [pacote, setPacote] = useState('');
@@ -20,6 +21,9 @@ export function Parametros() {
     <div className="stack" style={{ maxWidth: 900 }}>
       <h1>Parâmetros de cálculo</h1>
       {!ehAdmin && <div className="banner">Só o administrador altera os parâmetros. Você pode consultar.</div>}
+
+      <CodigoPx padraoAtual={empresa.padrao_codigo} editavel={ehAdmin}
+        onSalvar={async padrao => { await exec(() => salvarPadraoCodigo(empresa.id, padrao), 'Padrão do código salvo.'); await recarregarEmpresas(); }} />
 
       <section className="card" style={{ padding: 16 }}>
         <h2>Moedas e câmbio</h2>
@@ -84,5 +88,32 @@ export function Parametros() {
         )}
       </section>
     </div>
+  );
+}
+
+const EXEMPLO = 'PX-{campo:Área}-{campo:Projeto}-{campo:Disciplina}-{campo:Sigla}-{seq:4}';
+
+function CodigoPx({ padraoAtual, editavel, onSalvar }: { padraoAtual: string; editavel: boolean; onSalvar: (p: string) => Promise<void> }) {
+  const [padrao, setPadrao] = useState(padraoAtual);
+  const erros = validarPadrao(padrao);
+  const campos = camposDoPadrao(padrao);
+  const exemplo = montarCodigo(padrao, 1, Object.fromEntries(campos.map(c => [c, c.slice(0, 3)])));
+  return (
+    <section className="card stack" style={{ padding: 16, gap: 10 }}>
+      <h2>Código da PX</h2>
+      <p className="note">Define como o código de cada PX nova é montado. A revisão aparece separada (· Rev 0, Rev 1…).
+        Marcadores: <span className="mono">{'{seq:4}'}</span> número sequencial com 4 dígitos, gerado sozinho;
+        {' '}<span className="mono">{'{campo:Nome}'}</span> campo perguntado ao criar a PX;
+        {' '}<span className="mono">{'{ano}'}</span> ano atual.</p>
+      <div className="row">
+        <input className="in mono" style={{ flex: 1, minWidth: 260 }} value={padrao} disabled={!editavel} onChange={e => setPadrao(e.target.value)} />
+        {editavel && <button className="btn primary" disabled={!!erros.length || padrao === padraoAtual} onClick={() => onSalvar(padrao.trim())}>Salvar padrão</button>}
+      </div>
+      {editavel && padrao !== EXEMPLO && <button className="linkbtn" style={{ alignSelf: 'flex-start' }} onClick={() => setPadrao(EXEMPLO)}>Usar o exemplo {EXEMPLO}</button>}
+      {erros.map(e => <div key={e} className="banner">{e}</div>)}
+      {!erros.length && <span className="note">Exemplo da primeira PX: <b className="mono">{exemplo}</b>
+        {campos.length > 0 && <> · campos pedidos na criação: {campos.join(', ')}</>}</span>}
+      <span className="note">Mudar o padrão só afeta as PX criadas depois. As existentes mantêm o código.</span>
+    </section>
   );
 }

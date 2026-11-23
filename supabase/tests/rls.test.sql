@@ -152,3 +152,20 @@ reset role;
 set role service_role;
 select pg_temp.confere((select not ja_entrou from public.conta_por_email('EVE@X')), 'servidor encontra a conta pelo e-mail');
 reset role;
+
+-- 15) Código da PX no padrão da empresa
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+update public.empresas set padrao_codigo = 'PX-{campo:Área}-{campo:Projeto}-{campo:Disciplina}-{campo:Sigla}-{seq:4}' where id = (select v from ids where k='A');
+insert into ids values ('pxc', public.criar_px((select v from ids where k='projA'), 'Com padrão', 'PX Padrão v1', array['seq'], '',
+  '{"Área":"a2","Projeto":"1000","Disciplina":"G","Sigla":"PB"}'::jsonb));
+select pg_temp.confere((select codigo from public.pxs where id = (select v from ids where k='pxc')) = 'PX-A2-1000-G-PB-0003', 'código montado pelo padrão (3ª PX da empresa)');
+insert into ids values ('pxm', public.criar_px((select v from ids where k='projA'), 'Manual', 'PX Padrão v1', array['seq'], '', '{}'::jsonb, 'PX-ESPECIAL-01'));
+select pg_temp.confere((select codigo from public.pxs where id = (select v from ids where k='pxm')) = 'PX-ESPECIAL-01', 'código digitado manualmente');
+select pg_temp.deve_falhar(format($q$select public.criar_px(%L, 'x', 'm', array['seq'], '', '{}'::jsonb, 'PX-ESPECIAL-01')$q$, (select v from ids where k='projA')), 'código repetido');
+select pg_temp.deve_falhar(format($q$update public.empresas set padrao_codigo = 'PX-{campo:A}' where id = %L$q$, (select v from ids where k='A')), 'padrão sem sequencial');
+select pg_temp.confere(public.proximo_px_previsto((select v from ids where k='A')) = 4, 'prévia do próximo sequencial');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+update public.empresas set padrao_codigo = 'X-{seq}' where id = (select v from ids where k='A');
+reset role;
+select pg_temp.confere((select padrao_codigo from public.empresas where id = (select v from ids where k='A')) like 'PX-{campo:Área}%', 'orçamentista não altera o padrão');
