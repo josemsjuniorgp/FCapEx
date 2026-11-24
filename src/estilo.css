@@ -364,3 +364,18 @@ table.grid td.trib-cel{display:table-cell}
 .trib-lig input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
 .trib-manual{color:var(--accent);font-weight:700;font-size:14px;line-height:1}
 table.grid td.trib-cel.off span:last-child{color:var(--muted)}
+
+/* ===== Larguras automáticas e ajuste manual das colunas ===== */
+table.grid{border-collapse:separate}
+table.grid thead tr.h th{position:sticky;overflow:hidden;text-overflow:ellipsis}
+table.grid th .redim{position:absolute;top:0;right:-3px;width:8px;height:100%;cursor:col-resize;z-index:4;touch-action:none}
+table.grid th .redim::after{content:"";position:absolute;top:6px;bottom:6px;left:3px;width:2px;border-radius:2px;background:transparent;transition:background .15s}
+table.grid th:hover .redim::after{background:var(--line)}
+table.grid th .redim:hover::after,table.grid th .redim.manual::after{background:var(--accent)}
+table.grid td{overflow:hidden}
+table.grid td.in-c textarea{display:block;width:100%;min-height:33px;border:0;background:transparent;padding:7px 8px;resize:none;overflow:hidden;
+  font:inherit;line-height:1.35;color:inherit;white-space:pre-wrap;word-break:break-word;outline-offset:-2px}
+table.grid td.in-c textarea:focus{background:var(--accent-soft);outline:2px solid var(--accent)}
+table.grid td.txt{white-space:normal;word-break:break-word;padding:7px 8px;line-height:1.35}
+table.grid td.calc,table.grid td.in-c input.numi{white-space:nowrap}
+table.grid td.in-c select{text-overflow:ellipsis}

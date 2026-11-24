@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, useAviso, usdCurto } from '../app/ui';
@@ -13,6 +13,7 @@ import { itemVazio } from '../dominio/pq';
 import type { Frete, Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
+import { largurasAutomaticas } from '../app/larguras';
 import { FiltroGrupo } from './FiltroGrupo';
 
 const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
@@ -59,6 +60,8 @@ export function EditorPx() {
   const modelo = useMemo(() => new Set(px?.colunas ?? []), [px]);
   const todas = useMemo(() => colunasCompletas(parametros?.tributos ?? []), [parametros]);
   const colunas = todas.filter(c => c.k === 'seq' || (modelo.has(c.k) && !ocultas.has(c.k)));
+  const [largMan, setLargMan] = useState<Record<string, number>>({});
+  useEffect(() => { setLargMan(JSON.parse(localStorage.getItem('fcapex:larguras:' + id) || '{}')); }, [id]);
   const res = useMemo(() => {
     const m = new Map<string, Resultado>();
     if (parametros) for (const it of itens) m.set(it.id, calcular(it, parametros, modelo));
@@ -152,6 +155,24 @@ export function EditorPx() {
     setOcultas(s); localStorage.setItem('fcapex:ocultas:' + id, JSON.stringify([...s]));
   }
 
+  const chaveColunas = colunas.map(c => c.k).join('|');
+  const larguraAuto = useMemo(() => largurasAutomaticas(colunas, { itens, res, moedas, fretes: parametros?.fretes ?? [] }),
+    [chaveColunas, itens, res, moedas, parametros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const largura = (k: string) => largMan[k] ?? larguraAuto[k] ?? 120;
+  function redimensionar(e: React.PointerEvent, k: string) {
+    e.preventDefault(); e.stopPropagation();
+    const x0 = e.clientX, w0 = largura(k);
+    let atual = w0;
+    const mover = (ev: PointerEvent) => { atual = Math.max(40, Math.round(w0 + ev.clientX - x0)); setLargMan(m => ({ ...m, [k]: atual })); };
+    const soltar = () => {
+      window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar);
+      setLargMan(m => { const n = { ...m, [k]: atual }; localStorage.setItem('fcapex:larguras:' + id, JSON.stringify(n)); return n; });
+    };
+    window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar);
+  }
+  function larguraAutomatica(k: string) {
+    setLargMan(m => { const n = { ...m }; delete n[k]; localStorage.setItem('fcapex:larguras:' + id, JSON.stringify(n)); return n; });
+  }
   if (erro) return <div className="banner">Não foi possível abrir a PX: {erro}</div>;
   if (!px || !parametros || !t) return <p className="note">Carregando…</p>;
   const editavel = podeEditar && !!revAtual;
@@ -254,14 +275,23 @@ export function EditorPx() {
       <div className="workspace">
 
         <div className="gridwrap">
-          <table className="grid">
+          <table className="grid" style={{ tableLayout: 'fixed', width: colunas.reduce((t, c) => t + largura(c.k), 0) + (editavel ? 230 : 0) }}>
+            <colgroup>
+              {colunas.map(c => <col key={c.k} style={{ width: largura(c.k) }} />)}
+              {editavel && <col style={{ width: 230 }} />}
+            </colgroup>
             <thead>
               <tr className="g">{agruparCabecalho(colunas, editavel)}</tr>
               <tr className="h">
                 {colunas.map(c => (
-                  <th key={c.k} className={c.k === 'seq' ? 'sticky c1' : ''} style={c.w ? { minWidth: c.w } : undefined}
+                  <th key={c.k} className={c.k === 'seq' ? 'sticky c1' : ''}
                     title={(c.t === 'calc' || c.t === 'tax') && c.f ? 'Fórmula: ' + c.f : ''}>
                     {c.h}{(c.t === 'calc' || c.t === 'tax') && <span className="fx">fx</span>}
+                    {c.k !== 'seq' && (
+                      <span className={'redim' + (largMan[c.k] ? ' manual' : '')} role="separator" aria-orientation="vertical"
+                        aria-label={`Ajustar largura de ${c.h}`} title="Arraste para ajustar a largura · duplo clique volta ao automático"
+                        onPointerDown={e => redimensionar(e, c.k)} onDoubleClick={() => larguraAutomatica(c.k)} />
+                    )}
                   </th>
                 ))}
                 {editavel && <th />}
@@ -465,14 +495,22 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }:
 function Entrada({ valor, num, onSalvar }: { valor: string; num?: boolean; onSalvar: (v: string) => void }) {
   const [v, setV] = useState(valor);
   useEffect(() => setV(valor), [valor]);
-  return (
-    <input className={num ? 'numi' : ''} value={v} onChange={e => setV(e.target.value)}
-      onBlur={() => { if (v !== valor) onSalvar(v.trim()); }}
-      onKeyDown={e => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        if (e.key === 'Escape') { setV(valor); (e.target as HTMLInputElement).blur(); }
-      }} />
-  );
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // texto: quebra linha e a altura acompanha o conteúdo (nada fica cortado)
+  useLayoutEffect(() => {
+    const t = ref.current; if (!t) return;
+    const ajustar = () => { t.style.height = '0px'; t.style.height = Math.max(33, t.scrollHeight) + 'px'; };
+    ajustar();
+    const ro = new ResizeObserver(ajustar); ro.observe(t);
+    return () => ro.disconnect();
+  }, [v]);
+  const teclas = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
+    if (e.key === 'Escape') { setV(valor); (e.target as HTMLElement).blur(); }
+  };
+  if (num) return <input className="numi" value={v} onChange={e => setV(e.target.value)} onBlur={() => { if (v !== valor) onSalvar(v.trim()); }} onKeyDown={teclas} />;
+  return <textarea ref={ref} rows={1} value={v} onChange={e => setV(e.target.value.replace(/\n/g, ' '))}
+    onBlur={() => { if (v !== valor) onSalvar(v.trim()); }} onKeyDown={teclas} />;
 }
 
 // ------------------------------------------------------------------ painel Dados da PX

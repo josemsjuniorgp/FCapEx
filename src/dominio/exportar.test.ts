@@ -185,6 +185,23 @@ describe('exportação para Excel', async () => {
     for (const v of ['FRETES NACIONAIS', 'Rodoviário', 'MG', 'FRETES INTERNACIONAIS', 'Marítimo', '% do valor líquido']) expect(t).toContain(v);
   });
 
+  it('larguras pelo conteúdo: números cabem, Descrição longa quebra linha, colunas curtas estreitas', async () => {
+    const longa = 'FORNECIMENTO E MONTAGEM DE ESTRUTURA METÁLICA PARA COBERTURA DO GALPÃO DE ARMAZENAMENTO, INCLUINDO TERÇAS, CONTRAVENTAMENTOS E PINTURA';
+    const itens = ITENS.map(i => (i.id === 'i2' ? { ...i, desc: longa, qtd: 123456.78, preco: 98765.43 } : i));
+    const w = (await abrir({ ...DADOS, itens })).getWorksheet('PX')!;
+    const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
+    const col = (h: string) => cab.indexOf(h) + 1;
+    const larg = (h: string) => w.getColumn(col(h)).width!;
+    expect(larg('Descrição')).toBeLessThanOrEqual(60);
+    expect(w.getCell(16, col('Descrição')).alignment?.wrapText).toBe(true);
+    const total = w.getCell(16, col('Total geral (R$)'));
+    const exibido = 'R$ ' + (total.value as number).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    expect(larg('Total geral (R$)')).toBeGreaterThanOrEqual(exibido.length);
+    expect(larg('Quantidade')).toBeGreaterThanOrEqual('123.456,78'.length);
+    expect(larg('Unid')).toBeLessThan(12);
+    expect(larg('Nº')).toBeLessThan(8);
+  });
+
   it('nome do arquivo', () => {
     expect(nomeArquivo('PX-A1/0001', 2)).toBe('PX-A1-0001_Rev2.xlsx');
     expect(nomeArquivo('ORÇ 2026', 0)).toBe('ORÇ 2026_Rev0.xlsx');

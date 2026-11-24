@@ -269,6 +269,9 @@ function abaPx(
   });
   rt.height = 22;
 
+  // --- largura automática de cada coluna pelo conteúdo (números nunca cortados; textos longos quebram linha)
+  ajustarLarguras(ws, colunas, H2, linha);
+
   // --- usabilidade: congelar cabeçalho + colunas até a Descrição, filtro, impressão
   const iDesc = colunas.findIndex(c => c.k === 'desc');
   ws.views = [{ state: 'frozen', xSplit: iDesc >= 0 ? iDesc + 1 : 1, ySplit: H2, showGridLines: false, topLeftCell: ws.getCell(H2 + 1, iDesc + 2).address }];
@@ -416,6 +419,47 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
   const n = ws.getCell(linha, 1);
   n.value = 'Base = quantidade × preço × (1 + BDI) × câmbio. Parcial = base ÷ (1 − soma das alíquotas ligadas na linha). Cada tributo = parcial × sua alíquota. Total geral = parcial × (1 + provisão). Cada linha pode ligar ou desligar tributos.';
   n.font = { name: FONTE, size: 9, italic: true, color: { argb: COR.cinza } };
+}
+
+/** Texto que o Excel mostra na célula (aproximado), para medir a largura. */
+function textoExibido(cel: ExcelJS.Cell): string {
+  const v = cel.value;
+  if (v === null || v === undefined) return '';
+  if (typeof v !== 'number') return String(v);
+  const fmt = cel.numFmt || '';
+  if (fmt.includes('%')) { const d = (/0\.(0+)%/.exec(fmt)?.[1] ?? '').length; return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%'; }
+  const prefixo = /^"([^"]*)"/.exec(fmt)?.[1] ?? '';
+  const d = (/\.(0+)/.exec(fmt)?.[1] ?? '').length;
+  return prefixo + v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+/**
+ * Largura de cada coluna (unidades do Excel ≈ caracteres) pelo maior conteúdo, com limites.
+ * Números: sempre cabem. Textos acima do limite: quebram linha. Cabeçalho pode ocupar 2 linhas.
+ */
+function ajustarLarguras(ws: ExcelJS.Worksheet, colunas: Coluna[], linhaCab: number, ultima: number) {
+  colunas.forEach((c, i) => {
+    const col = i + 1;
+    const numero = c.num || c.t === 'calc' || c.t === 'tax' || c.k === 'seq';
+    const palavras = c.h.split(/\s+/);
+    const cab = Math.max(Math.max(...palavras.map(w => w.length)), Math.ceil(c.h.length / 2)) * 1.1 + 2;
+    let maior = 0;
+    for (let r = linhaCab + 1; r <= ultima; r++) {
+      const cel = ws.getCell(r, col);
+      const t = textoExibido(cel);
+      const peso = cel.font?.bold ? 1.12 : 1;
+      maior = Math.max(maior, t.length * peso);
+    }
+    const max = c.k === 'desc' ? 60 : numero ? 40 : 36;
+    const min = c.k === 'seq' ? 5 : c.k === 'desc' ? 30 : 7;
+    const w = Math.min(Math.max(maior * 1.08 + 3, cab, min), Math.max(max, cab));
+    ws.getColumn(col).width = Math.round(w * 10) / 10;
+    // texto maior que a coluna: quebra linha na própria célula
+    if (!numero) for (let r = linhaCab + 1; r <= ultima; r++) {
+      const cel = ws.getCell(r, col);
+      if (textoExibido(cel).length * 1.08 + 3 > w) cel.alignment = { ...cel.alignment, wrapText: true, vertical: 'middle' };
+    }
+  });
 }
 
 /** Nome do arquivo: <código>_Rev<n>.xlsx, sem caracteres inválidos. */
