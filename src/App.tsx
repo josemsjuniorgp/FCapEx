@@ -1,4 +1,4 @@
-import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ProvedorSessao, useSessao } from './app/Sessao';
 import { iniciais, ProvedorAviso } from './app/ui';
 import { NOME_PAPEL } from './dados/api';
@@ -22,6 +22,7 @@ const MENU: [string, string, string][] = [
 
 function Shell() {
   const { sessao, carregando, empresa, empresas, escolherEmpresa, sair, definirSenha } = useSessao();
+  const local = useLocation();
   if (carregando) return <p className="note" style={{ padding: 20 }}>Carregando…</p>;
   if (!sessao) return <Entrar />;
   if (definirSenha) return <DefinirSenha />;
@@ -32,7 +33,7 @@ function Shell() {
         <div className="brand2"><i>PX</i><div><b>Montador de PX</b><small>Orçamentos CapEx</small></div></div>
         <div className="nav-label">Menu</div>
         {MENU.map(([to, nome, d]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive ? ' ativo' : '')}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive || (to === '/' && local.pathname.startsWith('/px/')) ? ' ativo' : '')}>
             {I(d)}{nome}
           </NavLink>
         ))}

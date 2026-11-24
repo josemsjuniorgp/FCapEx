@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brlCurto, Confirmar, dataHora, iniciais, plural, useAcao, Vazio } from '../app/ui';
 import {
@@ -18,7 +18,8 @@ export function Projetos() {
   const [pxs, setPxs] = useState<Px[]>([]);
   const [revs, setRevs] = useState<Revisao[]>([]);
   const [resumo, setResumo] = useState<Record<string, Totais>>({});
-  const [cliente, setCliente] = useState<string | null>(null);
+  const [qs] = useSearchParams();
+  const [cliente, setCliente] = useState<string | null>(qs.get('cliente'));
   const [novoCliente, setNovoCliente] = useState('');
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [novoProjeto, setNovoProjeto] = useState<string | null>(null);

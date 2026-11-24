@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
-import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, usdCurto } from '../app/ui';
+import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, useAviso, usdCurto } from '../app/ui';
 import {
   atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
-  listarProjetos, listarRevisoes, type ItemPos, type Projeto, type Px, type Revisao,
+  listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
 import { COLUNAS, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
@@ -20,11 +20,13 @@ export function EditorPx() {
   const { id = '' } = useParams();
   const { empresa, parametros, moedas, podeEditar } = useSessao();
   const acao = useAcao();
+  const avisar = useAviso();
   const ir = useNavigate();
   const [px, setPx] = useState<Px | null>(null);
   const [revs, setRevs] = useState<Revisao[]>([]);
   const [itens, setItens] = useState<ItemPos[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [grupo, setGrupo] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>(null);
@@ -41,8 +43,8 @@ export function EditorPx() {
   const carregar = useCallback(async () => {
     if (!empresa) return;
     try {
-      const [x, r, pj] = await Promise.all([lerPx(id), listarRevisoes(id), listarProjetos(empresa.id)]);
-      setPx(x); setRevs(r); setProjetos(pj);
+      const [x, r, pj, cl] = await Promise.all([lerPx(id), listarRevisoes(id), listarProjetos(empresa.id), listarClientes(empresa.id)]);
+      setPx(x); setRevs(r); setProjetos(pj); setClientes(cl);
       const atual = r.find(v => !v.emitida_em);
       setItens(atual ? await listarItens(atual.id) : []);
       setOcultas(new Set(JSON.parse(localStorage.getItem('fcapex:ocultas:' + id) || '[]')));
@@ -121,13 +123,34 @@ export function EditorPx() {
   if (!px || !parametros || !t) return <p className="note">Carregando…</p>;
   const editavel = podeEditar && !!revAtual;
   const usd = parametros.cambio.USD;
+  const projeto = projetos.find(p => p.id === px.projeto_id);
+  const cliente = clientes.find(c => c.id === projeto?.cliente_id);
 
   return (
     <div id="pxEdit">
-      <header className="tools" style={{ background: 'var(--surface)' }}>
-        <Link to="/" className="linkbtn">← Projetos</Link>
-        <strong>{px.nome}</strong><span className="note mono">{px.codigo} · Rev {revAtual?.numero ?? '—'}</span>
-        <span className="pill p-mut">{px.modelo_nome}</span>
+      <header className="px-cab">
+        <button className="voltar" title="Voltar para Projetos" aria-label="Voltar para Projetos" onClick={() => ir(cliente ? `/?cliente=${cliente.id}` : '/')}>
+          <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <div className="px-cab-txt">
+          <nav className="trilha" aria-label="Trilha">
+            <Link to="/">Projetos</Link>
+            {cliente && <><span className="sep">›</span><Link to={`/?cliente=${cliente.id}`}>{cliente.nome}</Link></>}
+            {projeto && <><span className="sep">›</span><span className="atual">{projeto.nome}</span></>}
+          </nav>
+          <div className="px-cab-linha">
+            <h1>{px.nome}</h1>
+            <span className="chip codigo" title="Código da PX">{px.codigo}
+              <button aria-label="Copiar código" title="Copiar código"
+                onClick={() => navigator.clipboard?.writeText(px.codigo).then(() => avisar('Código copiado.'), () => avisar('Não foi possível copiar.'))}>
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+              </button>
+            </span>
+            <span className="chip rev"><i />Rev {revAtual?.numero ?? '—'}{revAtual ? ' · em edição' : ''}</span>
+            <span className="chip">{px.modelo_nome}</span>
+          </div>
+        </div>
+        <div className="px-cab-data">Atualizada em<b>{dataHora(px.atualizado_em)}</b></div>
       </header>
       <div className="kpis">
         <div className="kpi" title="Com BDI, tributos e provisão, convertido para R$"><small>Total Geral Bruto (R$)</small><b>{brlCurto(t.ger)}</b></div>
