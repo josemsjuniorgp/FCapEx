@@ -16,7 +16,7 @@ Protótipo original (HTML único): [`prototipo/montador-px.html`](prototipo/mont
 **Multiempresa:** toda tabela tem `empresa_id` e é protegida por RLS no Postgres. Um usuário só
 lê e grava dados das empresas das quais é membro, mesmo chamando a API diretamente.
 Papéis por empresa: Administrador, Orçamentista, Revisor e Somente leitura.
-Câmbio, alíquotas e pacotes de serviço são parâmetros de cada empresa.
+Câmbio, tributos, fretes e BDIs são cadastros de cada empresa.
 
 ## Rodar localmente
 

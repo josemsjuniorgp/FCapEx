@@ -4,7 +4,8 @@
  */
 import { COLUNAS, coluna } from './colunas';
 import { normMoeda, normOrig, normTipo, normTxt, parseNum, vazio } from './normalizacao';
-import type { Item } from './tipos';
+import type { Bdi, Item } from './tipos';
+import { bdiFinal } from './calculo';
 
 export interface Celula { txt: string; raw: unknown }
 export type Matriz = Celula[][];
@@ -34,6 +35,7 @@ const MAPA: [string, RegExp][] = [
   ['tipo', /^tipo( de trabalho)?$|forn.*mont/],
   ['orig', /^n ?\/ ?i$|^nacional|^origem|^natureza/],
   ['pacote', /^pacote/],
+  ['bdiv', /^bdi.*(r\$|valor)/],
   ['bdi', /^bdi/],
   ['prov', /^provis/],
   ['trib', /tribut/],
@@ -212,7 +214,26 @@ function converter(cel: Celula | undefined, destino: string): string | number | 
   if (destino === 'moeda') return normMoeda(s);
   if (destino === 'tipo') return normTipo(s);
   if (destino === 'orig') return normOrig(s);
+  if (destino === 'bdi') return typeof cel?.raw === 'number' ? cel.raw : s;
   return s;
+}
+
+/**
+ * BDI vindo da planilha: liga ao BDI cadastrado com o mesmo nome ou com o mesmo percentual final.
+ * Sem correspondência, a linha fica sem BDI ("-").
+ */
+export function bdiDaPlanilha(v: unknown, bdis: Bdi[]): string | null {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'string') {
+    const nome = normTxt(v);
+    const porNome = bdis.find(b => normTxt(b.nome) === nome);
+    if (porNome) return porNome.id;
+  }
+  let n = typeof v === 'number' ? v : parseNum(String(v).replace('%', ''));
+  if (Number.isNaN(n)) return null;
+  if (Math.abs(n) > 1) n /= 100;
+  const igual = bdis.find(b => Math.abs(bdiFinal(b) - n) < 0.00005);
+  return igual?.id ?? null;
 }
 
 export const itemVazio = (id: string, seq: number): Item => ({
@@ -225,6 +246,7 @@ export interface OpcoesImportacao {
   numeroPq: string;       // vai para a coluna Documento de Origem de todos os itens (menos títulos)
   seqInicial: number;     // próximo Nº da PX
   novoId: () => string;
+  bdis?: Bdi[];           // BDIs cadastrados (para ligar a coluna BDI da planilha)
 }
 
 /**
@@ -245,6 +267,7 @@ export function paraItens(p: Planilha, destinos: (string | null)[], av: Avaliaca
     });
     if (l.titulo) it.titulo = true;
     else it.pqdoc = o.numeroPq;
+    it.bdi = l.titulo ? null : bdiDaPlanilha(it.bdi, o.bdis ?? []);
     out.push(it as unknown as Item);
   }
   return out;

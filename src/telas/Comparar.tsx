@@ -4,6 +4,7 @@ import { useSessao } from '../app/Sessao';
 import { brl, nf, Vazio } from '../app/ui';
 import { lerPx, listarItens, listarRevisoes, type ItemPos, type Px, type Revisao } from '../dados/api';
 import { calcular } from '../dominio/calculo';
+import type { Parametros } from '../dominio/tipos';
 
 /** Compara duas revisões da PX. Os itens são casados pelo Nº (seq), que é copiado entre revisões. */
 export function Comparar() {
@@ -37,7 +38,14 @@ export function Comparar() {
   const linhas = useMemo(() => {
     if (!parametros || !px) return [];
     const cols = new Set(px.colunas);
-    const ger = (i?: ItemPos) => (i ? calcular(i, parametros, cols).ger || 0 : 0);
+    // revisão emitida usa a foto dos BDIs guardada na emissão (mudanças posteriores no cadastro não a alteram)
+    const comFoto = (numero: number | null): Parametros => {
+      const foto = revs.find(r => r.numero === numero)?.bdis_congelados;
+      if (!foto) return parametros;
+      return { ...parametros, bdis: [...foto, ...parametros.bdis.filter(b => !foto.some(f => f.id === b.id))] };
+    };
+    const pDe = comFoto(de), pPara = comFoto(para);
+    const ger = (i: ItemPos | undefined, p: Parametros) => (i ? calcular(i, p, cols).ger || 0 : 0);
     const mapaDe = new Map(itensDe.filter(i => !i.titulo).map(i => [i.seq, i]));
     const mapaPara = new Map(itensPara.filter(i => !i.titulo).map(i => [i.seq, i]));
     const seqs = [...new Set([...mapaDe.keys(), ...mapaPara.keys()])].sort((a, b) => a - b);
@@ -52,9 +60,9 @@ export function Comparar() {
         if (a.bdi !== b.bdi || a.prov !== b.prov) mudancas.push('BDI/provisão');
       }
       const tipo = !a ? 'novo' : !b ? 'removido' : mudancas.length ? 'alterado' : 'igual';
-      return { seq: s, it: (b ?? a)!, tipo, mudancas, va: ger(a), vb: ger(b) };
+      return { seq: s, it: (b ?? a)!, tipo, mudancas, va: ger(a, pDe), vb: ger(b, pPara) };
     });
-  }, [itensDe, itensPara, parametros, px]);
+  }, [itensDe, itensPara, parametros, px, revs, de, para]);
 
   const totalA = linhas.reduce((s, l) => s + l.va, 0), totalB = linhas.reduce((s, l) => s + l.vb, 0);
   const porArea = useMemo(() => {

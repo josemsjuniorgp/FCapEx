@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSessao } from '../app/Sessao';
 import { Dialogo, plural, useAcao } from '../app/ui';
 import { baixarArquivo, excluirItensDaRevisao, inserirItens, listarArquivos, type Arquivo, type ItemPos } from '../dados/api';
 import { COLUNAS, coluna } from '../dominio/colunas';
@@ -44,11 +45,12 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
     });
     setLendo(false);
   }
+  const bdis = useSessao().parametros?.bdis ?? [];
   const planilha = abas?.[aba]?.planilha;
   const av = useMemo(() => (planilha ? avaliar(planilha, destinos, modelo) : null), [planilha, destinos, modelo]);
   const previa = useMemo(() => (planilha && av
-    ? paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: 1, novoId: () => '' })
-    : []), [planilha, destinos, av, titulos, numeroPq]);
+    ? paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: 1, novoId: () => '', bdis })
+    : []), [planilha, destinos, av, titulos, numeroPq, bdis]);
   const entradas = COLUNAS.filter(c => c.t === 'in');
 
   async function importar() {
@@ -57,7 +59,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
     const substituir = modo === 'substituir';
     const seq0 = substituir ? 1 : Math.max(0, ...itens.map(i => i.seq)) + 1;
     const pos0 = substituir ? 0 : Math.max(0, ...itens.map(i => i.posicao));
-    const novos = paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: seq0, novoId: () => crypto.randomUUID() })
+    const novos = paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: seq0, novoId: () => crypto.randomUUID(), bdis })
       .map((it, i) => ({ ...it, posicao: pos0 + i + 1 }));
     const okk = await acao(async () => {
       if (substituir) await excluirItensDaRevisao(revisaoId);

@@ -18,7 +18,7 @@ export interface Item {
   orig: string;         // Natureza: N I
   moeda: string;        // código ISO: BRL, USD, EUR…
   preco: number | null;
-  bdi: number | null;   // fração
+  bdi: string | null;   // id do BDI cadastrado (null = "-", sem BDI)
   /** escolha manual por tributo nesta linha (id do tributo → ligado/desligado); ausente = regra do tributo */
   tribLigados: Record<string, boolean>;
   fnac: string | null;  // id do frete nacional escolhido
@@ -47,12 +47,29 @@ export interface Frete {
   moeda: string;                      // moeda do valor (nacional = BRL)
 }
 
+/** Parcela personalizada da composição do BDI (soma-se a AC + S + G + R). */
+export interface ParcelaBdi { nome: string; pct: number }
+
+/** BDI cadastrado pela empresa (frações: 0,04 = 4%). */
+export interface Bdi {
+  id: string;
+  nome: string;
+  administracao: number; // AC
+  seguros: number;       // S
+  garantias: number;     // G
+  riscos: number;        // R
+  financeiras: number;   // DF
+  lucro: number;         // L
+  extras: ParcelaBdi[];
+}
+
 /** Parâmetros de cálculo de cada empresa (vêm do banco). */
 export interface Parametros {
   /** câmbio para R$ por código de moeda; moeda ausente ou nula = sem câmbio */
   cambio: Record<string, number | null>;
   tributos: Tributo[];
   fretes: Frete[];
+  bdis: Bdi[];
 }
 
 export type Check = 'OK' | 'INCOMPLETO' | 'ERRO' | 'TITULO';
@@ -62,6 +79,7 @@ export interface Resultado {
   liq: number | null;   // líquido: quantidade × preço × câmbio (R$), sem BDI, tributos e provisão
   fnacv: number | null; // frete nacional (R$)
   fintv: number | null; // frete internacional (R$)
+  bdiv: number | null;  // valor do BDI (R$) = líquido × BDI da linha
   base: number | null;  // preço total s/ tributos (R$), com fretes
   trib: number | null;  // soma dos tributos ligados (R$)
   parc: number | null;

@@ -14,11 +14,12 @@ const P: Parametros = {
     { id: 'iss', nome: 'ISS', aliquota: 0.05, fornecimento: false, servico: true, nacional: true, importado: true },
   ],
   fretes: [],
+  bdis: [{ id: 'civil', nome: 'BDI Obras Civis', administracao: 0.04, seguros: 0.004, garantias: 0.004, riscos: 0.0127, financeiras: 0.0123, lucro: 0.074, extras: [] }],
 };
 const novo = (seq: number, o: Partial<Item>): Item => ({ ...itemVazio('i' + seq, seq), ...o });
 const ITENS: Item[] = [
   novo(1, { titulo: true, item: '1.1', desc: 'OBRAS CIVIS' }),
-  novo(2, { item: '1.1.1', desc: 'Concreto estrutural', un: 'm³', qtd: 10, preco: 1000, bdi: 0.25, pacote: 'SERV-CIV-1', tipo: 'C', orig: 'N', moeda: 'BRL', pqdoc: 'PQ-01' }),
+  novo(2, { item: '1.1.1', desc: 'Concreto estrutural', un: 'm³', qtd: 10, preco: 1000, bdi: 'civil', pacote: 'SERV-CIV-1', tipo: 'C', orig: 'N', moeda: 'BRL', pqdoc: 'PQ-01' }),
   novo(3, { titulo: true, item: '1.1.2', desc: 'FUNDAÇÕES' }),
   novo(4, { item: '1.1.2.1', desc: 'Estaca hélice', un: 'm', qtd: 100, preco: 50, pacote: 'P-2', tipo: 'S', orig: 'N', moeda: 'BRL' }),
   novo(5, { titulo: true, item: '1.2', desc: 'EQUIPAMENTOS' }),
@@ -126,6 +127,22 @@ describe('exportação para Excel', async () => {
     const t = texto(wb.getWorksheet('Resumo')!);
     for (const v of ['POR GRUPO (TÍTULOS DA PQ)', 'OBRAS CIVIS', '   FUNDAÇÕES', 'POR TIPO DE TRABALHO', 'Construção', 'POR NATUREZA', 'Importado', 'POR MOEDA', 'Dólar'])
       expect(t).toContain(v);
+  });
+
+  it('BDI: nome e % na linha, BDI (R$) somado no total, quadro por BDI e composição nos parâmetros', () => {
+    const iBdi = COLUNAS.findIndex(c => c.k === 'bdi') + 1, iBdiv = COLUNAS.findIndex(c => c.k === 'bdiv') + 1;
+    expect(ws.getCell(16, iBdi).value).toBe('BDI Obras Civis (15,32%)');
+    expect(ws.getCell(18, iBdi).value).toBe('-');
+    const r = calcular(ITENS[1], P, new Set(DADOS.px.colunas));
+    expect(ws.getCell(16, iBdiv).value).toBeCloseTo(r.bdiv!, 6);
+    const iDesc = COLUNAS.findIndex(c => c.k === 'desc') + 1;
+    let linhaTotal = 0;
+    ws.eachRow((row, n) => { if (row.getCell(iDesc).value === 'TOTAL') linhaTotal = n; });
+    expect(ws.getCell(linhaTotal, iBdiv).value).toBeCloseTo(r.bdiv!, 6);
+    const resumo = texto(wb.getWorksheet('Resumo')!);
+    for (const v of ['POR BDI', 'BDI Obras Civis', '15,32%', 'sem BDI (-)']) expect(resumo).toContain(v);
+    const par = texto(wb.getWorksheet('Parâmetros')!);
+    for (const v of ['BDIS USADOS NESTA PX', 'AC 4,00% · S 0,40% · G 0,40% · R 1,27% · DF 1,23% · L 7,40%', '(1 + AC + S + G + R']) expect(par).toContain(v);
   });
 
   it('parâmetros usados no cálculo', () => {

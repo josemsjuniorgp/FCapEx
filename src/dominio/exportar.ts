@@ -4,9 +4,9 @@
  * Os valores são os mesmos calculados pelo sistema (não são fórmulas).
  */
 import type ExcelJS from 'exceljs';
-import { calcular, gruposPorTitulo, totais } from './calculo';
+import { bdiDe, bdiFinal, calcular, gruposPorTitulo, totais } from './calculo';
 import { OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
-import type { Item, Parametros, Resultado } from './tipos';
+import type { Bdi, Item, Parametros, Resultado } from './tipos';
 
 export interface MoedaExportacao { codigo: string; nome: string; simbolo: string; cambio_brl: number | null }
 
@@ -43,7 +43,7 @@ const ROT_CHK = { OK: 'OK', INCOMPLETO: 'Incompleto', ERRO: 'Erro de classifica�
 
 const LARGURA: Record<string, number> = {
   seq: 6, pqdoc: 16, item: 11, area: 8, subarea: 9, ativo: 11, desc: 52, un: 7, qtd: 12, prov: 10, hh: 9,
-  pacote: 13, tipo: 17, orig: 13, moeda: 9, preco: 15, bdi: 8, base: 17, trib: 16, parc: 17, ger: 18, chk: 20,
+  pacote: 13, tipo: 17, orig: 13, moeda: 9, preco: 15, bdi: 22, bdiv: 15, base: 17, trib: 16, parc: 17, ger: 18, chk: 20,
 };
 
 function rotuloOpcao(k: 'tipo' | 'orig', v: string) {
@@ -221,8 +221,8 @@ function abaPx(
           cel.fill = fill(fundo);
           cel.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
-          const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv'];
-          cel.value = v ?? ((c.k === 'fnacv' || c.k === 'fintv') && r.base !== null ? 0 : null);
+          const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv' | 'bdiv'];
+          cel.value = v ?? ((c.k === 'fnacv' || c.k === 'fintv' || c.k === 'bdiv') && r.base !== null ? 0 : null);
           cel.numFmt = FMT_BRL;
           cel.fill = fill(par ? 'FFE7ECF0' : COR.calc);
           if (c.k === 'ger') cel.font = { name: FONTE, size: 10, bold: true, color: { argb: COR.tinta } };
@@ -232,6 +232,7 @@ function abaPx(
       const v = (it as unknown as Record<string, unknown>)[c.k];
       if (c.k === 'seq') cel.value = it.seq;
       else if (c.k === 'tipo' || c.k === 'orig') cel.value = v ? rotuloOpcao(c.k, String(v)) : null;
+      else if (c.k === 'bdi') { const b = bdiDe(d.parametros, it.bdi); cel.value = b ? `${b.nome} (${pctBr(bdiFinal(b))})` : '-'; }
       else if (c.k === 'fnac' || c.k === 'fint') { const f = d.parametros.fretes.find(x => x.id === v); cel.value = f ? `${f.nome}${f.local ? ` · ${f.local}` : ''}` : null; }
       else if (c.num) {
         cel.value = (v as number | null) ?? null;
@@ -251,7 +252,7 @@ function abaPx(
   // --- linha de total
   const ultimaItem = linha - 1;
   const rt = ws.getRow(linha);
-  const somas: Record<string, number> = { fnacv: 0, fintv: 0, base: 0, trib: 0, parc: 0, ger: 0 };
+  const somas: Record<string, number> = { bdiv: 0, fnacv: 0, fintv: 0, base: 0, trib: 0, parc: 0, ger: 0 };
   for (const it of d.itens) for (const k of Object.keys(somas)) somas[k] += res.get(it.id)?.[k as 'base'] || 0;
   for (const c of colunas) { const id = idDoTributo(c.k); if (id) somas[c.k] = tot.porTributo[id] || 0; }
   colunas.forEach((c, i) => {
@@ -345,7 +346,7 @@ function abaResumo(
   }
   if (porGrupo.length) tabela('Por grupo (títulos da PQ)', ['Item PQ', 'Grupo', 'Itens', 'Total bruto (R$)', '%'], porGrupo, [null, null, '0', FMT_BRL, '0.0%']);
 
-  const agrupar = (chave: (i: Item) => string, nome: (k: string) => string, titulo: string, rot: string) => {
+  const agrupar = (chave: (i: Item) => string, nome: (k: string) => string, titulo: string, rot: string, semRotulo = '(não classificado)', rotuloChave?: (k: string) => string) => {
     const m = new Map<string, { n: number; v: number; liq: number }>();
     for (const it of itensValidos) {
       const k = chave(it) || '';
@@ -354,12 +355,17 @@ function abaResumo(
       m.set(k, a);
     }
     const linhas = [...m.entries()].sort((a, b) => b[1].v - a[1].v)
-      .map(([k, a]) => [k || '—', k ? nome(k) : '(não classificado)', a.n, a.liq, a.v, pct(a.v)]);
+      .map(([k, a]) => [k ? (rotuloChave ? rotuloChave(k) : k) : '—', k ? nome(k) : semRotulo, a.n, a.liq, a.v, pct(a.v)]);
     if (linhas.length) tabela(titulo, [rot, 'Descrição', 'Itens', 'Total líquido (R$)', 'Total bruto (R$)', '%'], linhas, [null, null, '0', FMT_BRL, FMT_BRL, '0.0%']);
   };
   const padrao = (k: string, p: string) => (cols.has(k) ? '' : p);
   agrupar(i => i.tipo || padrao('tipo', 'F'), k => OPCOES.tipo.find(([c]) => c === k)?.[1] ?? 'inválido', 'Por tipo de trabalho', 'Tipo');
   agrupar(i => i.orig || padrao('orig', 'N'), k => OPCOES.orig.find(([c]) => c === k)?.[1] ?? 'inválido', 'Por natureza', 'Natureza');
+  if (cols.has('bdi')) {
+    // chave = id do BDI; 1ª coluna mostra o BDI final (%), 2ª o nome
+    agrupar(i => bdiDe(d.parametros, i.bdi)?.id ?? '', k => bdiDe(d.parametros, k)?.nome ?? '', 'Por BDI', 'BDI final', 'sem BDI (-)',
+      k => { const b = bdiDe(d.parametros, k); return b ? pctBr(bdiFinal(b)) : ''; });
+  }
   agrupar(i => i.moeda || padrao('moeda', 'BRL'), k => d.moedas.find(m => m.codigo === k)?.nome ?? 'sem cadastro', 'Por moeda', 'Moeda');
 
   const tt = ws.getCell(linha, 1); tt.value = 'TOTAL GERAL BRUTO (R$)';
@@ -410,6 +416,17 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
     // formato por linha: percentual ou moeda do frete
     fs.forEach((f, i) => { const c = ws.getCell(linha - 2 - fs.length + i, 4); c.numFmt = f.criterio === 'percentual' ? '0.00%' : fmtMoeda(d.moedas.find(m => m.codigo === f.moeda)?.simbolo ?? f.moeda); });
   }
+  const usados = new Set(d.itens.filter(i => !i.titulo && i.bdi).map(i => i.bdi));
+  const bdisUsados = d.parametros.bdis.filter(b => usados.has(b.id));
+  bloco('BDIs usados nesta PX', ['BDI', 'Composição', 'BDI final', 'Linhas'],
+    bdisUsados.length
+      ? bdisUsados.map(b => [b.nome, composicaoBdi(b), bdiFinal(b), d.itens.filter(i => !i.titulo && i.bdi === b.id).length])
+      : [['(nenhum)', '', null, null]], [null, null, '0.00%', '0']);
+  if (bdisUsados.length) {
+    const nb = ws.getCell(linha - 2, 1);
+    nb.value = 'BDI = (1 + AC + S + G + R + parcelas personalizadas) × (1 + DF) × (1 + L) − 1 (sem tributos: eles são calculados à parte em cada linha).';
+    nb.font = { name: FONTE, size: 9, italic: true, color: { argb: COR.cinza } };
+  }
   bloco('Tributos', ['Tributo', 'Aplica-se a', 'Alíquota', 'Forn. / Serv. / Nac. / Imp.'],
     d.parametros.tributos.length
       ? d.parametros.tributos.map(t => [t.nome,
@@ -417,8 +434,16 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
           t.aliquota, [t.fornecimento, t.servico, t.nacional, t.importado].map(sim).join(' / ')])
       : [['(nenhum)', '', null, '']], [null, null, '0.00%', null]);
   const n = ws.getCell(linha, 1);
-  n.value = 'Base = quantidade × preço × (1 + BDI) × câmbio. Parcial = base ÷ (1 − soma das alíquotas ligadas na linha). Cada tributo = parcial × sua alíquota. Total geral = parcial × (1 + provisão). Cada linha pode ligar ou desligar tributos.';
+  n.value = 'Líquido = quantidade × preço × câmbio. Base = líquido × (1 + BDI da linha) + fretes. Parcial = base ÷ (1 − soma das alíquotas ligadas na linha). Cada tributo = parcial × sua alíquota. Total geral = parcial × (1 + provisão). Cada linha pode ligar ou desligar tributos.';
   n.font = { name: FONTE, size: 9, italic: true, color: { argb: COR.cinza } };
+}
+
+const pctBr = (f: number) => (f * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+/** "AC 4,00% · S 0,40% · … · L 7,40%" (só as parcelas preenchidas) */
+function composicaoBdi(b: Bdi): string {
+  const partes: [string, number][] = [['AC', b.administracao], ['S', b.seguros], ['G', b.garantias], ['R', b.riscos],
+    ...b.extras.map(e => [e.nome, e.pct] as [string, number]), ['DF', b.financeiras], ['L', b.lucro]];
+  return partes.filter(([, v]) => v).map(([n, v]) => `${n} ${pctBr(v)}`).join(' · ') || 'sem parcelas';
 }
 
 /** Texto que o Excel mostra na célula (aproximado), para medir a largura. */

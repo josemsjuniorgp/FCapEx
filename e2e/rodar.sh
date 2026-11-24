@@ -44,7 +44,7 @@ fi
 
 # 3) Planilhas de teste e roteiros
 node e2e/fixtures.mjs "$TRAB" >/dev/null
-ROTEIROS=${*:-"principal codigo moedas tributos fretes larguras convite"}
+ROTEIROS=${*:-"principal codigo moedas tributos fretes larguras bdi convite"}
 FALHAS=0
 for r in $ROTEIROS; do
   [ "$r" = convite ] && curl -sS -X DELETE http://127.0.0.1:54324/api/v1/messages -o /dev/null

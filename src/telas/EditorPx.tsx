@@ -3,14 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, useAviso, usdCurto } from '../app/ui';
 import {
-  atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
+  aplicarBdiEmLote, atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
-import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
+import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
 import { colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
-import type { Frete, Resultado } from '../dominio/tipos';
+import type { Bdi, Frete, Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
 import { largurasAutomaticas } from '../app/larguras';
@@ -39,6 +39,7 @@ export function EditorPx() {
   const [importar, setImportar] = useState(false);
   const [editandoCab, setEditandoCab] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [lote, setLote] = useState<string | null>(null); // painel "Aplicar BDI": id escolhido ('' = sem BDI)
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -120,6 +121,20 @@ export function EditorPx() {
     if (await acao(() => emitirRevisao(px.id, t.ger), `Rev ${revAtual?.numero} emitida. A edição continua na Rev ${(revAtual?.numero ?? 0) + 1}.`)) carregar();
   }
 
+  /** Aplica o BDI escolhido a todas as linhas visíveis (respeita grupo, busca e filtro do Check). */
+  async function aplicarLote() {
+    if (lote === null) return;
+    const alvoIds = visiveis.filter(i => !i.titulo).map(i => i.id);
+    const bdi = lote || null;
+    const nome = parametros?.bdis.find(b => b.id === bdi)?.nome ?? 'sem BDI (-)';
+    if (await acao(() => aplicarBdiEmLote(alvoIds, bdi), `${nome} aplicado a ${plural(alvoIds.length, 'linha', 'linhas')}.`)) {
+      const ids = new Set(alvoIds);
+      setItens(l => l.map(i => (ids.has(i.id) ? { ...i, bdi } : i)));
+      setLote(null);
+      if (px) atualizarPx(px.id, {}).catch(() => {});
+    }
+  }
+
   /** Insere ou exclui uma coluna desta PX (para todos). Os valores dos itens ficam guardados. */
   async function mudarColuna(k: string, incluir: boolean) {
     if (!px) return;
@@ -156,7 +171,7 @@ export function EditorPx() {
   }
 
   const chaveColunas = colunas.map(c => c.k).join('|');
-  const larguraAuto = useMemo(() => largurasAutomaticas(colunas, { itens, res, moedas, fretes: parametros?.fretes ?? [] }),
+  const larguraAuto = useMemo(() => largurasAutomaticas(colunas, { itens, res, moedas, fretes: parametros?.fretes ?? [], bdis: parametros?.bdis ?? [] }),
     [chaveColunas, itens, res, moedas, parametros]); // eslint-disable-line react-hooks/exhaustive-deps
   const largura = (k: string) => largMan[k] ?? larguraAuto[k] ?? 120;
   function redimensionar(e: React.PointerEvent, k: string) {
@@ -256,6 +271,8 @@ export function EditorPx() {
         <input className="in" type="search" placeholder="Buscar descrição, item, área, pacote…" value={busca} onChange={e => setBusca(e.target.value)} />
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
+        {editavel && modelo.has('bdi') && <button className="btn" aria-pressed={lote !== null} onClick={() => setLote(lote === null ? '' : null)}
+          title="Escolher um BDI e aplicar a várias linhas de uma vez">Aplicar BDI</button>}
         <span className="spacer" />
         <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Colunas</button>
         <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
@@ -264,6 +281,20 @@ export function EditorPx() {
           {exportando ? 'Gerando…' : 'Exportar Excel'}</button>
         {editavel && <button className="btn primary" onClick={() => setPerguntar('emitir')}>Emitir nova revisão</button>}
       </div>
+      {lote !== null && editavel && (
+        <div className="bdi-lote" role="group" aria-label="Aplicar BDI em lote">
+          <b>Aplicar BDI</b>
+          <select value={lote} aria-label="BDI a aplicar" onChange={e => setLote(e.target.value)}>
+            <option value="">- (sem BDI)</option>
+            {parametros.bdis.map(b => <option key={b.id} value={b.id}>{rotuloBdi(b)}</option>)}
+          </select>
+          <span>às <b>{plural(visiveis.filter(i => !i.titulo).length, 'linha visível', 'linhas visíveis')}</b></span>
+          <span className="note">Use o filtro de grupo, a busca ou o filtro do Check para escolher as linhas.</span>
+          <span className="spacer" />
+          <button className="btn" onClick={() => setLote(null)}>Cancelar</button>
+          <button className="btn primary" disabled={!visiveis.some(i => !i.titulo)} onClick={aplicarLote}>Aplicar</button>
+        </div>
+      )}
       {perguntar === 'emitir' && revAtual && (
         <div style={{ padding: '0 20px' }}>
           <Confirmar sim={`Emitir Rev ${revAtual.numero}`} onNao={() => setPerguntar(null)} onSim={emitir}
@@ -303,7 +334,7 @@ export function EditorPx() {
                 return (
                   <tr key={it.id} className={(it.titulo ? 'title ' : '') + (sel === it.id ? 'sel' : '')} onClick={() => setSel(it.id)}>
                     {colunas.map(c => (
-                      <Celula key={c.k} c={c} it={it} r={r} editavel={editavel} fretes={parametros.fretes}
+                      <Celula key={c.k} c={c} it={it} r={r} editavel={editavel} fretes={parametros.fretes} bdis={parametros.bdis}
                         moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}
                         simbolo={moedas.find(m => m.codigo === it.moeda)?.simbolo ?? ''}
                         dica={c.k === 'chk' ? detalheCheck(it, r, parametros, modelo) : undefined}
@@ -390,8 +421,8 @@ function agruparCabecalho(cols: Coluna[], extra: boolean): ReactNode[] {
 }
 
 // ------------------------------------------------------------------ célula da grade
-function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }: {
-  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[];
+function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, bdis }: {
+  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[]; bdis: Bdi[];
   dica?: string; onSalvar: (v: unknown) => void;
 }) {
   if (c.k === 'seq') return <td className="sticky c1 mono">{it.seq}</td>;
@@ -426,8 +457,8 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }:
       const [cls, txt] = ROTULO_CHK[r.chk];
       return <td className="calc chk" title={dica}><span className={'pill ' + cls}><i />{txt}</span></td>;
     }
-    const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv'];
-    const semFrete = (c.k === 'fnacv' || c.k === 'fintv') && v === null && r.base !== null;
+    const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv' | 'bdiv'];
+    const semFrete = (c.k === 'fnacv' || c.k === 'fintv' || c.k === 'bdiv') && v === null && r.base !== null;
     return (
       <td className="calc" title={c.f}>
         {semFrete ? '0,00' : v === null ? '—' : nf(v, 2)}
@@ -447,6 +478,18 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }:
         <select value={atual ? id : ''} onChange={e => onSalvar(e.target.value || null)} title={atual ? rot(atual) : 'Sem frete'}>
           <option value="">sem frete</option>
           {ops.map(f => <option key={f.id} value={f.id}>{rot(f)}</option>)}
+        </select>
+      </td>
+    );
+  }
+  if (c.k === 'bdi') {
+    const atual = bdis.find(b => b.id === it.bdi);
+    if (!editavel) return <td className="txt">{atual ? rotuloBdi(atual) : '-'}</td>;
+    return (
+      <td className="in-c">
+        <select value={atual ? atual.id : ''} onChange={e => onSalvar(e.target.value || null)} title={atual ? rotuloBdi(atual) : 'Sem BDI'} aria-label="BDI da linha">
+          <option value="">-</option>
+          {bdis.map(b => <option key={b.id} value={b.id}>{rotuloBdi(b)}</option>)}
         </select>
       </td>
     );
@@ -490,6 +533,9 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }:
     </td>
   );
 }
+
+/** "BDI Obras Civis (22,35%)" */
+export const rotuloBdi = (b: Bdi) => `${b.nome} (${nf(bdiFinal(b) * 100, 2)}%)`;
 
 /** Campo que salva ao sair (blur) ou com Enter; Esc desfaz. */
 function Entrada({ valor, num, onSalvar }: { valor: string; num?: boolean; onSalvar: (v: string) => void }) {

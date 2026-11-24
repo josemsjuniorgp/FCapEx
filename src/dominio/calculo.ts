@@ -1,6 +1,6 @@
 import { COLUNAS, PADROES } from './colunas';
 import { vazio } from './normalizacao';
-import type { Frete, Item, Parametros, Resultado, Tributo } from './tipos';
+import type { Bdi, Frete, Item, Parametros, Resultado, Tributo } from './tipos';
 
 const SERVICO = ['C', 'S', 'T', 'M'];
 const OBRIG_CALCULO = ['qtd', 'preco', 'moeda', 'orig', 'tipo'] as const;
@@ -24,6 +24,18 @@ export function tributoSeAplica(t: Tributo, tipo: string, orig: string): boolean
 export const tributoLigado = (t: Tributo, it: Item, tipo: string, orig: string) =>
   it.tribLigados?.[t.id] ?? tributoSeAplica(t, tipo, orig);
 
+/**
+ * BDI final pela composição, sem tributos (os tributos são calculados à parte em cada linha):
+ * (1 + AC + S + G + R + parcelas personalizadas) × (1 + DF) × (1 + L) − 1
+ */
+export function bdiFinal(b: Pick<Bdi, 'administracao' | 'seguros' | 'garantias' | 'riscos' | 'financeiras' | 'lucro' | 'extras'>): number {
+  const extras = (b.extras ?? []).reduce((s, e) => s + (Number(e.pct) || 0), 0);
+  return (1 + b.administracao + b.seguros + b.garantias + b.riscos + extras) * (1 + b.financeiras) * (1 + b.lucro) - 1;
+}
+
+export const bdiDe = (p: Parametros, id: string | null | undefined): Bdi | null =>
+  (id ? p.bdis?.find(b => b.id === id) ?? null : null);
+
 const freteDe = (p: Parametros, id: string | null | undefined): Frete | null =>
   (id ? p.fretes.find(f => f.id === id) ?? null : null);
 
@@ -35,7 +47,7 @@ function valorFrete(f: Frete | null, liq: number, p: Parametros): number | null 
 }
 
 export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): Resultado {
-  const vazioRes = { liq: null, fnacv: null, fintv: null, base: null, trib: null, parc: null, ger: null, ligados: {}, tribs: {}, aliquota: 0 };
+  const vazioRes = { liq: null, fnacv: null, fintv: null, bdiv: null, base: null, trib: null, parc: null, ger: null, ligados: {}, tribs: {}, aliquota: 0 };
   if (item.titulo) return { chk: 'TITULO', ...vazioRes };
   const r = comPadroes(item, cols);
   const fx = p.cambio[String(r.moeda).toUpperCase()] ?? undefined;
@@ -62,7 +74,9 @@ export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): 
     out.liq = r.qtd! * r.preco! * fx!;
     out.fnacv = valorFrete(fretes[0], out.liq, p);
     out.fintv = valorFrete(fretes[1], out.liq, p);
-    out.base = out.liq * (1 + (r.bdi || 0)) + (out.fnacv || 0) + (out.fintv || 0);
+    const b = bdiDe(p, r.bdi);
+    out.bdiv = b ? out.liq * bdiFinal(b) : null;
+    out.base = out.liq + (out.bdiv || 0) + (out.fnacv || 0) + (out.fintv || 0);
     out.parc = out.base / (1 - aliquota);
     out.trib = out.parc - out.base;
     out.tribs = {};
@@ -81,7 +95,9 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
   const nomes = p.tributos.filter(t => res.ligados[t.id]).map(t => `${t.nome} ${pct(t.aliquota)}`);
   const trib = nomes.length ? `Tributos ligados: ${nomes.join(', ')} (total ${pct(res.aliquota)}).` : 'Nenhum tributo ligado nesta linha.';
   const fr = [freteDe(p, item.fnac), freteDe(p, item.fint)].filter(Boolean).map(f => f!.nome);
-  if (res.chk === 'OK') return `Linha completa e classificada corretamente. ${trib}${fr.length ? ` Frete: ${fr.join(' + ')}.` : ''}`;
+  const b = bdiDe(p, item.bdi);
+  const bdi = b ? ` BDI: ${b.nome} (${pct(bdiFinal(b))}).` : '';
+  if (res.chk === 'OK') return `Linha completa e classificada corretamente. ${trib}${fr.length ? ` Frete: ${fr.join(' + ')}.` : ''}${bdi}`;
   const r = comPadroes(item, cols);
   const msgs: string[] = [];
   const miss = OBRIG_CALCULO.filter(k => vazio(r[k]));
@@ -100,13 +116,13 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
   return msgs.join('\n') || 'Verifique os dados da linha.';
 }
 
-export interface Totais { ger: number; parc: number; liq: number; trib: number; inc: number; err: number; tit: number; ok: number; porTributo: Record<string, number> }
+export interface Totais { ger: number; parc: number; liq: number; trib: number; bdiv: number; inc: number; err: number; tit: number; ok: number; porTributo: Record<string, number> }
 
 export function totais(itens: Item[], p: Parametros, cols?: Set<string> | null): Totais {
-  const t: Totais = { ger: 0, parc: 0, liq: 0, trib: 0, inc: 0, err: 0, tit: 0, ok: 0, porTributo: {} };
+  const t: Totais = { ger: 0, parc: 0, liq: 0, trib: 0, bdiv: 0, inc: 0, err: 0, tit: 0, ok: 0, porTributo: {} };
   for (const it of itens) {
     const c = calcular(it, p, cols);
-    t.ger += c.ger || 0; t.parc += c.parc || 0; t.liq += c.liq || 0; t.trib += c.trib || 0;
+    t.ger += c.ger || 0; t.parc += c.parc || 0; t.liq += c.liq || 0; t.trib += c.trib || 0; t.bdiv += c.bdiv || 0;
     for (const [id, v] of Object.entries(c.tribs)) t.porTributo[id] = (t.porTributo[id] || 0) + v;
     if (c.chk === 'INCOMPLETO') t.inc++; else if (c.chk === 'ERRO') t.err++; else if (c.chk === 'TITULO') t.tit++; else t.ok++;
   }

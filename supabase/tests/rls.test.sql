@@ -230,3 +230,49 @@ select public.emitir_revisao((select v from ids where k='pxt'), 0);
 select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
   where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com frete' and i.frete_nacional is null) = 1, 'frete excluído: item copiado sem frete');
 reset role;
+
+-- 19) BDIs: Administrador e Orçamentista cadastram, leitura não; isolados por empresa;
+--     item só usa BDI da própria empresa; emitir guarda a foto dos BDIs e a revisão nova copia o BDI
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+with b as (insert into public.bdis (empresa_id, nome, administracao, lucro)
+  values ((select v from ids where k='A'), 'BDI Obras Civis', 0.04, 0.074) returning id)
+insert into ids select 'bdiA', id from b;
+update public.bdis set riscos = 0.0127 where id = (select v from ids where k='bdiA');
+select pg_temp.confere((select riscos from public.bdis where id = (select v from ids where k='bdiA')) = 0.0127, 'orçamentista altera BDI');
+insert into public.itens (empresa_id, revisao_id, posicao, seq, descricao, bdi_id)
+  select (select v from ids where k='A'), r.id, 4, 4, 'Com BDI', (select v from ids where k='bdiA')
+    from public.revisoes r where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000c');
+select pg_temp.deve_falhar(format($q$insert into public.bdis (empresa_id, nome) values (%L, 'x')$q$, (select v from ids where k='A')), 'leitura cadastrar BDI');
+update public.bdis set lucro = 0.5 where id = (select v from ids where k='bdiA');
+reset role;
+select pg_temp.confere((select lucro from public.bdis where id = (select v from ids where k='bdiA')) = 0.074, 'leitura não altera BDI');
+select pg_temp.como('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.confere((select count(*) from public.bdis) = 0, 'estranho não vê BDIs da A');
+reset role;
+with e as (insert into public.empresas (nome) values ('Empresa C') returning id) insert into ids select 'C', id from e;
+with b as (insert into public.bdis (empresa_id, nome) values ((select v from ids where k='C'), 'BDI da C') returning id)
+insert into ids select 'bdiB', id from b;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+-- BDI de outra empresa: invisível para quem edita, então o item não fica ligado a ele
+insert into public.itens (empresa_id, revisao_id, posicao, seq, descricao, bdi_id)
+  select (select v from ids where k='A'), r.id, 5, 5, 'BDI alheio', (select v from ids where k='bdiB')
+    from public.revisoes r where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null;
+select pg_temp.confere((select bdi_id from public.itens where descricao = 'BDI alheio') is null, 'item não usa BDI de outra empresa');
+delete from public.itens where descricao = 'BDI alheio';
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.bdi_id = (select v from ids where k='bdiA')) = 1, 'revisão nova copia o BDI escolhido');
+select pg_temp.confere((select bdis_congelados -> 0 ->> 'nome' from public.revisoes r where r.px_id = (select v from ids where k='pxt')
+  and r.emitida_em is not null order by numero desc limit 1) = 'BDI Obras Civis', 'emissão guarda a foto do BDI usado');
+-- alterar o BDI depois não muda a foto da revisão emitida
+update public.bdis set lucro = 0.2 where id = (select v from ids where k='bdiA');
+select pg_temp.confere((select (bdis_congelados -> 0 ->> 'lucro')::numeric from public.revisoes r where r.px_id = (select v from ids where k='pxt')
+  and r.emitida_em is not null order by numero desc limit 1) = 0.074, 'foto da revisão emitida não muda');
+-- excluir o BDI: a revisão em edição continua emitindo (item fica sem BDI)
+delete from public.bdis where id = (select v from ids where k='bdiA');
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com BDI' and i.bdi_id is null) = 1, 'BDI excluído: item copiado sem BDI');
+reset role;

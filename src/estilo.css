@@ -76,6 +76,7 @@ table.t tr:last-child td{border-bottom:0}
 .kpi.fx input{width:84px;text-align:right;font-family:var(--mono)}
 .tools{display:flex;gap:8px;align-items:center;padding:8px 20px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:var(--bg)}
 .tools .in{min-width:200px}
+.tools input[type=search].in{flex:0 1 240px;min-width:120px}
 .workspace{display:grid;grid-template-columns:230px minmax(0,1fr) auto;flex:1;min-height:0}
 .tree{border-right:1px solid var(--line);background:var(--surface);overflow:auto;padding:10px 8px}
 .tree button{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:6px 8px;color:var(--ink)}
@@ -379,3 +380,31 @@ table.grid td.in-c textarea:focus{background:var(--accent-soft);outline:2px soli
 table.grid td.txt{white-space:normal;word-break:break-word;padding:7px 8px;line-height:1.35}
 table.grid td.calc,table.grid td.in-c input.numi{white-space:nowrap}
 table.grid td.in-c select{text-overflow:ellipsis}
+
+/* ---------- BDI ---------- */
+.bdi-intro{max-width:820px;line-height:1.55}
+.bdi-formula{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:6px;background:var(--calc);font:500 12px var(--mono);color:var(--ink)}
+.bdi-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start}
+.bdi-card{position:relative;padding:16px 16px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.bdi-card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--accent)}
+.bdi-card.novo{border-style:dashed;border-color:var(--accent)}
+.bdi-cab{display:flex;align-items:flex-start;gap:12px}
+.bdi-cab h2{flex:1;min-width:0;overflow-wrap:anywhere;padding-top:6px}
+.bdi-nome{flex:1;min-width:0;font-weight:600}
+.bdi-final{display:flex;flex-direction:column;align-items:flex-end;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:112px}
+.bdi-final small{color:var(--muted);font-size:11px;font-weight:500}
+.bdi-final b{font-size:22px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bdi-tab{width:100%;table-layout:fixed}
+.bdi-tab td:last-child{width:128px}
+.bdi-tab td{padding:5px 6px}
+.bdi-sigla{display:inline-block;min-width:26px;margin-right:6px;padding:1px 5px;border-radius:4px;background:var(--calc);font:600 10.5px var(--mono);color:var(--muted);text-align:center}
+.bdi-pct{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.bdi-pct input{width:84px}
+.bdi-pct span{color:var(--muted);font-size:12px}
+.bdi-extra input.in:not(.num){flex:1;min-width:0;width:100%}
+.bdi-exemplo{min-height:18px}
+.bdi-erro{color:var(--err)}
+.bdi-rodape{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.bdi-vazio{padding:28px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.bdi-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft, #eef7f8)}
+@media (min-width:1500px){.tools{flex-wrap:nowrap}.tools > *{flex-shrink:0}.tools input[type=search].in{flex-shrink:1}}

@@ -1,6 +1,6 @@
 /** Acesso ao banco. Converte entre as colunas do banco (português) e o Item do domínio. */
 import { supabase } from './supabase';
-import type { Frete, Item, Parametros, Tributo } from '../dominio/tipos';
+import type { Bdi, Frete, Item, Parametros, Tributo } from '../dominio/tipos';
 
 export type Papel = 'admin' | 'orcamentista' | 'revisor' | 'leitura';
 export const NOME_PAPEL: Record<Papel, string> = {
@@ -15,7 +15,7 @@ export interface Px {
   id: string; projeto_id: string; codigo: string; nome: string; modelo_nome: string;
   colunas: string[]; observacoes: string; atualizado_em: string;
 }
-export interface Revisao { id: string; px_id: string; numero: number; emitida_em: string | null; total: number | null }
+export interface Revisao { id: string; px_id: string; numero: number; emitida_em: string | null; total: number | null; bdis_congelados?: Bdi[] | null }
 export interface Pasta { id: string; nome: string }
 export interface Arquivo {
   id: string; pasta_id: string | null; nome: string; tipo: string; disciplina: string;
@@ -33,6 +33,7 @@ export function traduzErro(msg: string): string {
   if (/pxs_empresa_id_codigo_key/i.test(msg)) return 'Já existe uma PX com esse código.';
   if (/pxs_codigo_tamanho/i.test(msg)) return 'O código da PX precisa ter entre 1 e 250 caracteres.';
   if (/fretes_empresa_id_tipo_nome_key/i.test(msg)) return 'Já existe um frete com esse nome.';
+  if (/bdis_empresa_id_nome_key/i.test(msg)) return 'Já existe um BDI com esse nome.';
   if (/tributos_empresa_id_nome_key/i.test(msg)) return 'Já existe um tributo com esse nome.';
   if (/duplicate key|unique/i.test(msg)) return 'Já existe um registro com esse nome.';
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
@@ -77,12 +78,22 @@ const tributoDoBanco = (t: TributoDb): Tributo => ({
   fornecimento: t.aplica_fornecimento, servico: t.aplica_servico, nacional: t.aplica_nacional, importado: t.aplica_importado,
 });
 
+const CAMPOS_BDI = 'id, nome, administracao, seguros, garantias, riscos, financeiras, lucro, extras';
+/** Converte um BDI vindo do banco (números chegam como texto). */
+export const bdiDoBanco = (b: Bdi): Bdi => ({
+  id: b.id, nome: b.nome,
+  administracao: Number(b.administracao), seguros: Number(b.seguros), garantias: Number(b.garantias),
+  riscos: Number(b.riscos), financeiras: Number(b.financeiras), lucro: Number(b.lucro),
+  extras: (Array.isArray(b.extras) ? b.extras : []).map(e => ({ nome: String(e.nome ?? ''), pct: Number(e.pct) || 0 })),
+});
+
 export async function carregarParametros(emp: string): Promise<{ p: Parametros; moedas: Moeda[] }> {
-  const [m, tr, fr] = await Promise.all([
+  const [m, tr, fr, bd] = await Promise.all([
     supabase.from('moedas').select('codigo, nome, simbolo, cambio_brl').eq('empresa_id', emp).order('codigo'),
     supabase.from('tributos').select('id, nome, aliquota, aplica_fornecimento, aplica_servico, aplica_nacional, aplica_importado')
       .eq('empresa_id', emp).order('ordem').order('criado_em'),
     supabase.from('fretes').select('id, tipo, nome, local, criterio, valor, moeda').eq('empresa_id', emp).order('criado_em'),
+    supabase.from('bdis').select(CAMPOS_BDI).eq('empresa_id', emp).order('nome'),
   ]);
   const moedas = (ok(m) as Moeda[]).map(x => ({ ...x, cambio_brl: x.cambio_brl === null ? null : Number(x.cambio_brl) }));
   return {
@@ -91,6 +102,7 @@ export async function carregarParametros(emp: string): Promise<{ p: Parametros; 
       cambio: Object.fromEntries(moedas.map(x => [x.codigo, x.cambio_brl])),
       tributos: (ok(tr) as TributoDb[]).map(tributoDoBanco),
       fretes: (ok(fr) as Frete[]).map(f => ({ ...f, valor: Number(f.valor) })),
+      bdis: (ok(bd) as Bdi[]).map(bdiDoBanco),
     },
   };
 }
@@ -112,6 +124,27 @@ export async function salvarFrete(emp: string, f: Omit<Frete, 'id'> & { id?: str
   const linha = { empresa_id: emp, tipo: f.tipo, nome: f.nome.trim(), local: f.local.trim(), criterio: f.criterio, valor: f.valor, moeda: f.tipo === 'nacional' ? 'BRL' : f.moeda };
   if (f.id) ok(await supabase.from('fretes').update(linha).eq('id', f.id));
   else ok(await supabase.from('fretes').insert(linha));
+}
+/** Cria ou altera um BDI da empresa (Administrador e Orçamentista). Devolve o id. */
+export async function salvarBdi(emp: string, b: Omit<Bdi, 'id'> & { id?: string }): Promise<string> {
+  const linha = {
+    empresa_id: emp, nome: b.nome.trim(), administracao: b.administracao, seguros: b.seguros, garantias: b.garantias,
+    riscos: b.riscos, financeiras: b.financeiras, lucro: b.lucro,
+    extras: b.extras.filter(e => e.nome.trim() || e.pct).map(e => ({ nome: e.nome.trim(), pct: e.pct })),
+  };
+  if (b.id) { ok(await supabase.from('bdis').update(linha).eq('id', b.id)); return b.id; }
+  return (ok(await supabase.from('bdis').insert(linha).select('id').single()) as { id: string }).id;
+}
+export const excluirBdi = async (id: string) => ok(await supabase.from('bdis').delete().eq('id', id));
+/** Quantas linhas (de revisões em edição) usam cada BDI. */
+export async function usoDosBdis(emp: string): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (let de = 0; ; de += 1000) {
+    const lote = ok(await supabase.from('itens').select('bdi_id, revisoes!inner(emitida_em)').eq('empresa_id', emp)
+      .not('bdi_id', 'is', null).is('revisoes.emitida_em', null).range(de, de + 999)) as unknown as { bdi_id: string }[];
+    for (const r of lote) out[r.bdi_id] = (out[r.bdi_id] || 0) + 1;
+    if (lote.length < 1000) return out;
+  }
 }
 export const excluirFrete = async (id: string) => ok(await supabase.from('fretes').delete().eq('id', id));
 export const excluirTributo = async (id: string) => ok(await supabase.from('tributos').delete().eq('id', id));
@@ -147,8 +180,8 @@ export const atualizarPx = async (id: string, campos: Partial<Pick<Px, 'nome' | 
 export const excluirPx = async (id: string) => ok(await supabase.from('pxs').delete().eq('id', id));
 
 export const listarRevisoes = async (pxId: string) =>
-  (ok(await supabase.from('revisoes').select('id, px_id, numero, emitida_em, total').eq('px_id', pxId).order('numero')) as Revisao[])
-    .map(r => ({ ...r, total: r.total === null ? null : Number(r.total) }));
+  (ok(await supabase.from('revisoes').select('id, px_id, numero, emitida_em, total, bdis_congelados').eq('px_id', pxId).order('numero')) as Revisao[])
+    .map(r => ({ ...r, total: r.total === null ? null : Number(r.total), bdis_congelados: r.bdis_congelados ? r.bdis_congelados.map(bdiDoBanco) : null }));
 /** Revisões de todas as PX da empresa (para os cartões). */
 export const revisoesDaEmpresa = async (emp: string) =>
   ok(await supabase.from('revisoes').select('id, px_id, numero, emitida_em, total').eq('empresa_id', emp)) as Revisao[];
@@ -160,7 +193,7 @@ interface ItemDb {
   id: string; posicao: number; seq: number; titulo: boolean; pq_doc: string; pq_item: string;
   area: string; subarea: string; ativo: string; descricao: string; unidade: string;
   quantidade: number | null; provisao: number | null; hh: number | null; pacote: string;
-  tipo: string; natureza: string; moeda: string; preco: number | null; bdi: number | null;
+  tipo: string; natureza: string; moeda: string; preco: number | null; bdi_id: string | null;
   tributos_ligados: Record<string, boolean> | null;
   frete_nacional: string | null; frete_internacional: string | null;
 }
@@ -171,13 +204,13 @@ const doBanco = (r: ItemDb): ItemPos => ({
   id: r.id, posicao: r.posicao, seq: r.seq, titulo: r.titulo, pqdoc: r.pq_doc, item: r.pq_item,
   area: r.area, subarea: r.subarea, ativo: r.ativo, desc: r.descricao, un: r.unidade,
   qtd: num(r.quantidade), prov: num(r.provisao), hh: num(r.hh), pacote: r.pacote, tipo: r.tipo,
-  orig: r.natureza, moeda: r.moeda, preco: num(r.preco), bdi: num(r.bdi), tribLigados: r.tributos_ligados ?? {},
+  orig: r.natureza, moeda: r.moeda, preco: num(r.preco), bdi: r.bdi_id ?? null, tribLigados: r.tributos_ligados ?? {},
   fnac: r.frete_nacional, fint: r.frete_internacional,
 });
 const MAPA_DB: Record<string, keyof ItemDb> = {
   seq: 'seq', titulo: 'titulo', pqdoc: 'pq_doc', item: 'pq_item', area: 'area', subarea: 'subarea', ativo: 'ativo',
   desc: 'descricao', un: 'unidade', qtd: 'quantidade', prov: 'provisao', hh: 'hh', pacote: 'pacote', tipo: 'tipo',
-  orig: 'natureza', moeda: 'moeda', preco: 'preco', bdi: 'bdi', posicao: 'posicao', tribLigados: 'tributos_ligados',
+  orig: 'natureza', moeda: 'moeda', preco: 'preco', bdi: 'bdi_id', posicao: 'posicao', tribLigados: 'tributos_ligados',
   fnac: 'frete_nacional', fint: 'frete_internacional',
 };
 export function paraBanco(campos: Partial<ItemPos>): Record<string, unknown> {
@@ -186,7 +219,7 @@ export function paraBanco(campos: Partial<ItemPos>): Record<string, unknown> {
   for (const k of ['pq_doc', 'pq_item', 'area', 'subarea', 'ativo', 'descricao', 'unidade', 'pacote', 'tipo', 'natureza', 'moeda'])
     if (k in o && (o[k] === null || o[k] === undefined)) o[k] = '';
   if ('tributos_ligados' in o && !o.tributos_ligados) o.tributos_ligados = {};
-  for (const k of ['frete_nacional', 'frete_internacional']) if (k in o && !o[k]) o[k] = null;
+  for (const k of ['frete_nacional', 'frete_internacional', 'bdi_id']) if (k in o && !o[k]) o[k] = null;
   return o;
 }
 
@@ -207,6 +240,11 @@ export async function inserirItens(emp: string, revisao: string, itens: ItemPos[
 }
 export const atualizarItem = async (id: string, campos: Partial<ItemPos>) =>
   ok(await supabase.from('itens').update(paraBanco(campos)).eq('id', id));
+/** Aplica o mesmo BDI (ou nenhum) a várias linhas de uma vez. */
+export async function aplicarBdiEmLote(ids: string[], bdi: string | null) {
+  for (let i = 0; i < ids.length; i += 200)
+    ok(await supabase.from('itens').update({ bdi_id: bdi }).in('id', ids.slice(i, i + 200)));
+}
 export const excluirItem = async (id: string) => ok(await supabase.from('itens').delete().eq('id', id));
 export const excluirItensDaRevisao = async (revisao: string) => ok(await supabase.from('itens').delete().eq('revisao_id', revisao));
 

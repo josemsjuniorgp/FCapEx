@@ -1,9 +1,9 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { lerExcel } from './excel';
-import { avaliar, destinosIniciais, paraItens } from './pq';
+import { avaliar, bdiDaPlanilha, destinosIniciais, paraItens } from './pq';
 
-const PADRAO = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'prov', 'hh', 'pacote', 'tipo', 'orig', 'moeda', 'preco', 'bdi', 'base', 'trib', 'parc', 'ger', 'chk']);
+const PADRAO = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'prov', 'hh', 'pacote', 'tipo', 'orig', 'moeda', 'preco', 'bdi', 'bdiv', 'base', 'trib', 'parc', 'ger', 'chk']);
 const SIMPLES = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'moeda', 'preco', 'bdi', 'base', 'parc', 'ger', 'chk']);
 
 // Formato da PQ real do usuário: títulos 1.1.1 / 1.1.1.1, colunas de código (22, 2200, C, 75, 15…)
@@ -112,5 +112,23 @@ describe('bloqueios da importação', async () => {
     const dest = destinosIniciais(q);
     const [it1] = paraItens(q, dest, avaliar(q, dest, PADRAO), { incluirTitulos: false, numeroPq: '', seqInicial: 1, novoId });
     expect(it1).toMatchObject({ tipo: 'F', orig: 'I', moeda: 'USD', qtd: 2 });
+  });
+});
+
+describe('BDI vindo da planilha', () => {
+  const bdis = [
+    { id: 'civ', nome: 'BDI Obras Civis', administracao: 0.04, seguros: 0, garantias: 0, riscos: 0, financeiras: 0, lucro: 0.1, extras: [] },
+    { id: 'f', nome: 'Fornecimento', administracao: 0, seguros: 0, garantias: 0, riscos: 0, financeiras: 0, lucro: 0.12, extras: [] },
+  ];
+  it('liga pelo nome (sem diferenciar maiúsculas/acentos) ou pelo percentual final', () => {
+    expect(bdiDaPlanilha('bdi obras civis', bdis)).toBe('civ');
+    expect(bdiDaPlanilha(0.12, bdis)).toBe('f');
+    expect(bdiDaPlanilha('12%', bdis)).toBe('f');
+    expect(bdiDaPlanilha('14,4', bdis)).toBe('civ');           // (1,04)(1,10) − 1 = 14,4%
+  });
+  it('sem correspondência ou vazio: sem BDI', () => {
+    expect(bdiDaPlanilha(0.33, bdis)).toBeNull();
+    expect(bdiDaPlanilha('', bdis)).toBeNull();
+    expect(bdiDaPlanilha('Outro', bdis)).toBeNull();
   });
 });

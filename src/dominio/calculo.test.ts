@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { calcular, detalheCheck, gruposPorTitulo, totais, tributoSeAplica } from './calculo';
+import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, totais, tributoSeAplica } from './calculo';
 import { itemVazio } from './pq';
-import type { Item, Parametros, Tributo } from './tipos';
+import type { Bdi, Item, Parametros, Tributo } from './tipos';
 
 const T = (id: string, aliquota: number, o: Partial<Tributo> = {}): Tributo =>
   ({ id, nome: id.toUpperCase(), aliquota, fornecimento: true, servico: true, nacional: true, importado: true, ...o });
@@ -15,7 +15,11 @@ const TRIB: Tributo[] = [
   T('iss', 0.05, { fornecimento: false }),
   T('irrf', 0.15, { fornecimento: false, nacional: false }),
 ];
-const P: Parametros = { cambio: { BRL: 1, USD: 5.2, EUR: null }, tributos: TRIB, fretes: [] };
+const B = (id: string, o: Partial<Bdi> = {}): Bdi =>
+  ({ id, nome: id, administracao: 0, seguros: 0, garantias: 0, riscos: 0, financeiras: 0, lucro: 0, extras: [], ...o });
+// BDIs simples (todo o percentual em Lucro)
+const BDIS = [B('b25', { lucro: 0.25 }), B('b10', { lucro: 0.1 })];
+const P: Parametros = { cambio: { BRL: 1, USD: 5.2, EUR: null }, tributos: TRIB, fretes: [], bdis: BDIS };
 const item = (o: Partial<Item>): Item => ({
   ...itemVazio('x', 1), desc: 'Item', qtd: 10, preco: 100, pacote: 'P-1', tipo: 'C', orig: 'N', moeda: 'BRL', ...o,
 });
@@ -37,7 +41,7 @@ describe('regra de aplicação dos tributos', () => {
 
 describe('calcular', () => {
   it('serviço nacional com BDI e provisão: tributos por dentro', () => {
-    const r = calcular(item({ bdi: 0.25, prov: 0.1 }), P);
+    const r = calcular(item({ bdi: 'b25', prov: 0.1 }), P);
     const aliq = 0.0165 + 0.076 + 0.05;
     expect(r.chk).toBe('OK');
     expect(r.aliquota).toBeCloseTo(aliq, 10);
@@ -100,7 +104,7 @@ describe('calcular', () => {
   });
 
   it('líquido = quantidade × preço × câmbio, sem BDI, tributos e provisão', () => {
-    const r = calcular(item({ bdi: 0.25, prov: 0.1, moeda: 'USD' }), P);
+    const r = calcular(item({ bdi: 'b25', prov: 0.1, moeda: 'USD' }), P);
     expect(r.liq).toBeCloseTo(10 * 100 * 5.2, 6);
     expect(r.base).toBeCloseTo(10 * 100 * 5.2 * 1.25, 6);
     expect(calcular(item({ qtd: null }), P).liq).toBeNull();
@@ -191,7 +195,7 @@ describe('fretes', () => {
   const aliqSvc = 0.0165 + 0.076 + 0.05;
 
   it('frete nacional por valor: único por linha, soma à base antes dos tributos', () => {
-    const r = calcular(item({ fnac: 'fn', bdi: 0.1 }), PF);
+    const r = calcular(item({ fnac: 'fn', bdi: 'b10' }), PF);
     expect(r.fnacv).toBe(500);
     expect(r.base).toBeCloseTo(1000 * 1.1 + 500, 6);
     expect(r.parc).toBeCloseTo((1100 + 500) / (1 - aliqSvc), 6);
@@ -234,5 +238,46 @@ describe('fretes', () => {
   it('colunas de frete fora do modelo da PX: sem frete', () => {
     const cols = new Set(['seq', 'desc', 'qtd', 'preco', 'ger', 'chk', 'tipo', 'orig', 'moeda']);
     expect(calcular(item({ fnac: 'fn' }), PF, cols).fnacv).toBeNull();
+  });
+});
+
+describe('BDI cadastrado', () => {
+  // exemplo de composição usual: AC 4%, S 0,4%, G 0,4%, R 1,27%, DF 1,23%, L 7,4%
+  const civil = B('civil', { nome: 'BDI Obras Civis', administracao: 0.04, seguros: 0.004, garantias: 0.004, riscos: 0.0127, financeiras: 0.0123, lucro: 0.074 });
+  const PB: Parametros = { ...P, bdis: [civil] };
+
+  it('BDI final pela fórmula sem tributos: (1+AC+S+G+R)(1+DF)(1+L) − 1', () => {
+    expect(bdiFinal(civil)).toBeCloseTo((1 + 0.04 + 0.004 + 0.004 + 0.0127) * 1.0123 * 1.074 - 1, 12);
+    expect(bdiFinal(civil)).toBeCloseTo(0.1532, 4);
+  });
+
+  it('parcelas personalizadas somam-se a AC + S + G + R', () => {
+    const b = { ...civil, extras: [{ nome: 'Mobilização', pct: 0.02 }] };
+    expect(bdiFinal(b)).toBeCloseTo((1 + 0.0607 + 0.02) * 1.0123 * 1.074 - 1, 12);
+  });
+
+  it('só lucro: BDI final = lucro (BDIs convertidos)', () => {
+    expect(bdiFinal(B('x', { lucro: 0.155 }))).toBeCloseTo(0.155, 12);
+  });
+
+  it('incide só sobre o líquido; fretes entram depois, sem BDI', () => {
+    const PF: Parametros = { ...PB, fretes: [{ id: 'fn', tipo: 'nacional', nome: 'F', local: 'SP', criterio: 'valor', valor: 500, moeda: 'BRL' }] };
+    const r = calcular(item({ bdi: 'civil', fnac: 'fn' }), PF);
+    expect(r.bdiv).toBeCloseTo(1000 * bdiFinal(civil), 8);
+    expect(r.base).toBeCloseTo(1000 + r.bdiv! + 500, 8);
+    expect(r.liq).toBeCloseTo(1000, 8);
+  });
+
+  it('"-" (sem BDI) ou BDI excluído: BDI (R$) nulo e base = líquido', () => {
+    const sem = calcular(item({}), PB), excl = calcular(item({ bdi: 'nao-existe' }), PB);
+    expect(sem.bdiv).toBeNull();
+    expect(sem.base).toBeCloseTo(1000, 8);
+    expect(excl.ger).toBeCloseTo(sem.ger!, 10);
+  });
+
+  it('totais somam o BDI e o Check cita o BDI da linha', () => {
+    const it1 = item({ bdi: 'civil' });
+    expect(totais([it1, item({ id: 'y' })], PB).bdiv).toBeCloseTo(1000 * bdiFinal(civil), 8);
+    expect(detalheCheck(it1, calcular(it1, PB), PB)).toContain('BDI: BDI Obras Civis');
   });
 });

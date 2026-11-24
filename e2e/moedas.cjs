@@ -49,12 +49,11 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await td('Natureza').locator('select').selectOption('N'); await p.waitForTimeout(250);
     await td('Moeda').locator('select').selectOption('GBP'); await p.waitForTimeout(250);
     await escrever('Preço unit.', '100');
-    await escrever('BDI', '10');
     await linha.getByText('OK', { exact: true }).waitFor();
     const simbolo = await td('Preço unit.').locator('.cur span').innerText();
     if (simbolo !== '£') throw new Error('símbolo da moeda no preço: ' + simbolo);
     const kpis = await p.locator('.kpis').innerText();
-    const esperado = { 'Total Geral Bruto (R$)': 'R$ 8.484,85', 'Total Geral Líquido (R$)': 'R$ 7.000,00', 'Total Geral Bruto (US$)': 'US$ 1.631,70', 'Total Geral Líquido (US$)': 'US$ 1.346,15' };
+    const esperado = { 'Total Geral Bruto (R$)': 'R$ 7.713,50', 'Total Geral Líquido (R$)': 'R$ 7.000,00', 'Total Geral Bruto (US$)': 'US$ 1.483,37', 'Total Geral Líquido (US$)': 'US$ 1.346,15' };
     for (const [rot, val] of Object.entries(esperado)) {
       const k = await p.locator('.kpi', { hasText: rot }).locator('b').innerText();
       if (k.replace(/\s/g, ' ') !== val) throw new Error(`${rot}: ${k} (esperado ${val})`);

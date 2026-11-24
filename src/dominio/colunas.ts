@@ -35,9 +35,10 @@ export const COLUNAS: Coluna[] = [
   { k: 'fint', h: 'Frete internacional', g: 'Frete', t: 'in', w: 190 },
   { k: 'fintv', h: 'Frete internacional (R$)', g: 'Frete', t: 'calc', f: 'valor do frete × câmbio da moeda do frete, ou % do valor líquido' },
   { k: 'preco', h: 'Preço unit.', g: 'Preço', t: 'in', num: true, req: true, dec: 2 },
-  { k: 'bdi', h: 'BDI', g: 'Preço', t: 'in', num: true, pct: true },
-  { k: 'base', h: 'Preço total s/ trib. (R$)', g: 'Preço', t: 'calc', f: 'qtd × preço × (1 + BDI) × câmbio + fretes' },
-  { k: 'trib', h: 'Tributos (R$)', g: 'Tributos', t: 'calc', f: 'total ÷ (1 − alíquota) − base, conforme regime Natureza × Tipo' },
+  { k: 'bdi', h: 'BDI', g: 'Preço', t: 'in', w: 190 },
+  { k: 'bdiv', h: 'BDI (R$)', g: 'Preço', t: 'calc', f: 'valor líquido (qtd × preço × câmbio) × BDI da linha' },
+  { k: 'base', h: 'Preço total s/ trib. (R$)', g: 'Preço', t: 'calc', f: 'valor líquido + BDI + fretes' },
+  { k: 'trib', h: 'Tributos (R$)', g: 'Tributos', t: 'calc', f: 'parcial − base (soma dos tributos ligados na linha)' },
   { k: 'parc', h: 'Total parcial (R$)', g: 'Totais', t: 'calc', f: 'base + tributos' },
   { k: 'ger', h: 'Total geral (R$)', g: 'Totais', t: 'calc', f: 'parcial × (1 + provisão)', lock: true },
   { k: 'chk', h: 'Check', g: 'Totais', t: 'calc', lock: true },
@@ -54,7 +55,7 @@ export const OPCOES = {
 } as const;
 
 /** Valor usado no cálculo quando a coluna não faz parte do modelo da PX. */
-export const PADROES = { un: '', prov: 0, hh: 0, pacote: 'N/A', tipo: 'F', orig: 'N', moeda: 'BRL', bdi: 0, fnac: null, fint: null } as const;
+export const PADROES = { un: '', prov: 0, hh: 0, pacote: 'N/A', tipo: 'F', orig: 'N', moeda: 'BRL', bdi: null, fnac: null, fint: null } as const;
 
 /** Chave da coluna de um tributo da empresa. */
 export const chaveTributo = (id: string) => 'tx:' + id;
