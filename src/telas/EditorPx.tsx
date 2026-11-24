@@ -13,6 +13,7 @@ import { itemVazio } from '../dominio/pq';
 import type { Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
+import { FiltroGrupo } from './FiltroGrupo';
 
 const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
 type Filtro = null | 'OK' | 'INCOMPLETO' | 'ERRO';
@@ -64,9 +65,16 @@ export function EditorPx() {
   const t = useMemo(() => (parametros ? totais(itens, parametros, modelo) : null), [itens, parametros, modelo]);
   const grupos = useMemo(() => gruposPorTitulo(itens), [itens]);
   const titulos = itens.filter(i => i.titulo);
+  /** O título e seus subníveis pela numeração do Item PQ (1.1 inclui 1.1.1, 1.1.1.1…). */
+  const ramo = useCallback((id: string) => {
+    const t0 = titulos.find(t => t.id === id);
+    const pref = t0?.item.replace(/\.$/, '');
+    return new Set([id, ...(pref ? titulos.filter(t => t.item.replace(/\.$/, '').startsWith(pref + '.')).map(t => t.id) : [])]);
+  }, [titulos]);
+  const alvo = useMemo(() => (grupo ? ramo(grupo) : null), [grupo, ramo]);
 
   const visiveis = itens.filter(it => {
-    if (grupo && it.id !== grupo && grupos.get(it.id) !== grupo) return false;
+    if (alvo && !alvo.has(grupos.get(it.id) ?? '')) return false;
     if (filtro && !it.titulo && res.get(it.id)?.chk !== filtro) return false;
     if (filtro && it.titulo) return false;
     if (busca) {
@@ -181,6 +189,12 @@ export function EditorPx() {
         <span className="note">Câmbio: {moedas.filter(m => m.codigo !== 'BRL').map(m => `${m.simbolo} ${m.cambio_brl ? nf(m.cambio_brl, 4) : '—'}`).join(' · ') || '—'} (<Link to="/parametros">parâmetros</Link>)</span>
       </div>
       <div className="tools">
+        <FiltroGrupo valor={grupo} onEscolher={setGrupo} total={t.ger} totalItens={itens.length - t.tit}
+          opcoes={titulos.map(ti => {
+            const r = ramo(ti.id);
+            const membros = itens.filter(i => !i.titulo && r.has(grupos.get(i.id) ?? ''));
+            return { id: ti.id, item: ti.item, desc: ti.desc, n: membros.length, soma: membros.reduce((s2, i) => s2 + (res.get(i.id)?.ger || 0), 0) };
+          })} />
         <input className="in" type="search" placeholder="Buscar descrição, item, área, pacote…" value={busca} onChange={e => setBusca(e.target.value)} />
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
@@ -199,20 +213,6 @@ export function EditorPx() {
       )}
 
       <div className="workspace">
-        <nav className="tree" aria-label="Grupos">
-          <button aria-pressed={grupo === null} onClick={() => setGrupo(null)}><span>Todos os itens<small>{brlCurto(t.ger)}</small></span><span className="c">{itens.length - t.tit}</span></button>
-          {titulos.map(ti => {
-            const membros = itens.filter(i => grupos.get(i.id) === ti.id && !i.titulo);
-            const soma = membros.reduce((s, i) => s + (res.get(i.id)?.ger || 0), 0);
-            return (
-              <button key={ti.id} aria-pressed={grupo === ti.id} title={ti.desc} onClick={() => setGrupo(ti.id)}>
-                <span>{ti.item && <span className="mono">{ti.item} </span>}{ti.desc || 'Título sem nome'}<small>{brlCurto(soma)}</small></span>
-                <span className="c">{membros.length}</span>
-              </button>
-            );
-          })}
-          {!titulos.length && <p className="note" style={{ padding: 8 }}>Os grupos aparecem a partir das linhas de título importadas da PQ.</p>}
-        </nav>
 
         <div className="gridwrap">
           <table className="grid">

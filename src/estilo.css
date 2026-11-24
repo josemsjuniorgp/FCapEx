@@ -299,3 +299,34 @@ nav.side a.nav-item.ativo svg{opacity:1}
 .lapis{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;border:1px solid transparent;background:none;color:var(--muted)}
 .lapis:hover{border-color:var(--line);color:var(--accent);background:var(--accent-soft)}
 .lapis svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== Altura fixa na tela: a grade rola por dentro e a barra horizontal fica no rodapé ===== */
+.app{height:100vh;height:100dvh;grid-template-rows:minmax(0,1fr)}
+.main{min-height:0;overflow:hidden}
+#v-px.on{min-height:0}
+#pxEdit{min-height:0}
+.workspace{min-height:0}
+.gridwrap{min-height:0;height:100%}
+@media (max-width:980px){.app{grid-template-rows:auto minmax(0,1fr)}}
+
+/* ===== Filtro de grupo (caixa suspensa) ===== */
+.workspace{grid-template-columns:minmax(0,1fr) auto}
+.grupo-filtro{position:relative;display:flex;align-items:center;gap:4px}
+.grupo-botao{display:flex;align-items:center;gap:8px;height:34px;max-width:420px;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:0 10px;color:var(--ink)}
+.grupo-botao:hover,.grupo-botao[aria-expanded="true"]{border-color:var(--accent)}
+.grupo-botao.ativo{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.grupo-rot{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.grupo-valor{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.grupo-n{font:500 11.5px var(--mono);color:var(--muted);background:var(--calc);border-radius:999px;padding:1px 7px}
+.grupo-botao svg{flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.grupo-limpar{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:16px;line-height:1}
+.grupo-limpar:hover{color:var(--err);border-color:var(--err)}
+.grupo-menu{position:absolute;top:40px;left:0;z-index:30;width:min(560px,90vw);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;display:flex;flex-direction:column;gap:6px}
+.grupo-menu > .in{width:100%}
+.grupo-lista{max-height:min(420px,60vh);overflow:auto;display:flex;flex-direction:column;gap:1px}
+.grupo-op{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;border:0;background:none;border-radius:6px;padding:7px 10px;color:var(--ink)}
+.grupo-op:hover{background:var(--calc)}
+.grupo-op.sel{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.grupo-op-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grupo-op-txt .mono{color:var(--muted);margin-right:8px;font-size:12px}
+.grupo-op-num{flex:none;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
