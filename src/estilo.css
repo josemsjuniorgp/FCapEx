@@ -368,8 +368,8 @@ table.grid td.trib-cel.off span:last-child{color:var(--muted)}
 /* ===== Larguras automáticas e ajuste manual das colunas ===== */
 table.grid{border-collapse:separate}
 table.grid thead tr.h th{position:sticky;overflow:hidden;text-overflow:ellipsis}
-table.grid th .redim{position:absolute;top:0;right:-3px;width:8px;height:100%;cursor:col-resize;z-index:4;touch-action:none}
-table.grid th .redim::after{content:"";position:absolute;top:6px;bottom:6px;left:3px;width:2px;border-radius:2px;background:transparent;transition:background .15s}
+table.grid th .redim{position:absolute;top:0;right:0;width:9px;height:100%;cursor:col-resize;z-index:4;touch-action:none}
+table.grid th .redim::after{content:"";position:absolute;top:6px;bottom:6px;right:1px;width:2px;border-radius:2px;background:transparent;transition:background .15s}
 table.grid th:hover .redim::after{background:var(--line)}
 table.grid th .redim:hover::after,table.grid th .redim.manual::after{background:var(--accent)}
 table.grid td{overflow:hidden}
