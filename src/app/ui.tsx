@@ -5,6 +5,10 @@ export const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency',
 export const brlCurto = (n: number) => (Math.abs(n) >= 1e6 ? 'R$ ' + nf(n / 1e6, 2) + ' mi' : brl(n));
 export const dataHora = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+/** Iniciais para o avatar: "Engenharia Teste Ltda" -> "ET". */
+export const iniciais = (nome: string) =>
+  nome.replace(/\b(ltda|s\.?a\.?|me|eireli|de|da|do|das|dos|e)\b/gi, ' ').trim().split(/\s+/).filter(Boolean)
+    .slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
 export const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`;
 
 // ------------------------------------------------------------------ aviso flutuante (toast)

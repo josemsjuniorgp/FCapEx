@@ -207,3 +207,61 @@ td .confirm{margin:0;flex-direction:row;align-items:center;flex-wrap:wrap}
 }
 @media (prefers-reduced-motion:no-preference){.view.on{animation:fade .15s ease-out}@keyframes fade{from{opacity:.4}to{opacity:1}}}
 #root{height:100%}
+
+/* ===== Menu lateral (v2) ===== */
+nav.side{padding:18px 12px;gap:2px;background:linear-gradient(180deg,var(--surface) 0%,var(--surface) 70%,var(--bg) 100%)}
+.brand2{display:flex;align-items:center;gap:11px;padding:2px 8px 20px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.brand2 i{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font:600 13px var(--mono);font-style:normal;color:var(--accent-ink);
+  background:linear-gradient(135deg,var(--accent) 0%,color-mix(in srgb,var(--accent) 70%,#000) 100%);box-shadow:0 2px 6px color-mix(in srgb,var(--accent) 35%,transparent)}
+.brand2 b{display:block;font-size:14.5px;letter-spacing:-.01em}
+.brand2 small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
+.nav-label{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 12px 6px;opacity:.8}
+nav.side a.nav-item{position:relative;display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:500;transition:background .15s,color .15s}
+nav.side a.nav-item svg{width:18px;height:18px;opacity:.85}
+nav.side a.nav-item:hover{background:var(--calc);color:var(--ink)}
+nav.side a.nav-item.ativo{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.side a.nav-item.ativo::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+nav.side a.nav-item.ativo svg{opacity:1}
+.conta{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface);box-shadow:0 1px 2px rgba(15,30,45,.05);display:flex;flex-direction:column;gap:8px}
+.conta-cab{display:flex;align-items:center;gap:10px;min-width:0}
+.conta-cab div{min-width:0}
+.conta-cab b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conta-cab small{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-top:3px}
+.conta-email{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conta-acoes{display:flex;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.conta-acoes button{flex:1;background:none;border:1px solid transparent;border-radius:6px;padding:4px 6px;font-size:12px;color:var(--muted)}
+.conta-acoes button:hover{border-color:var(--line);color:var(--ink);background:var(--calc)}
+.avatar{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--sans);letter-spacing:.02em;
+  color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
+
+/* ===== Painel de clientes (v2) ===== */
+.clientes{padding:0;align-self:start;overflow:hidden;box-shadow:0 1px 2px rgba(15,30,45,.05),0 6px 18px rgba(15,30,45,.05)}
+.cli-cab{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.cli-cab h3{margin:0}
+.contador{font:600 11.5px var(--mono);color:var(--muted);background:var(--calc);border-radius:999px;padding:1px 8px}
+.cli-lista{display:flex;flex-direction:column;gap:2px;padding:0 8px 8px}
+.cli{position:relative;display:flex;align-items:center;border-radius:9px;transition:background .15s}
+.cli:hover{background:var(--calc)}
+.cli.ativo{background:var(--accent-soft)}
+.cli.ativo::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.cli-btn{flex:1;min-width:0;display:flex;align-items:center;gap:11px;background:none;border:0;padding:9px 10px;text-align:left;color:var(--ink)}
+.cli-txt{min-width:0;display:flex;flex-direction:column}
+.cli-txt b{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cli.ativo .cli-txt b{color:var(--accent)}
+.cli-txt small{color:var(--muted);font-size:11.5px;margin-top:1px}
+.cli .avatar{width:32px;height:32px;font-size:12px}
+.cli.ativo .avatar{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.icone-btn{flex:none;width:30px;height:30px;margin-right:6px;display:grid;place-items:center;border-radius:7px;border:1px solid transparent;background:none;color:var(--muted);opacity:0;transition:opacity .15s}
+.icone-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cli:hover .icone-btn,.cli.ativo .icone-btn,.icone-btn:focus-visible{opacity:1}
+.icone-btn:hover{color:var(--err);background:var(--err-soft);border-color:color-mix(in srgb,var(--err) 25%,transparent)}
+.cli-vazio{padding:14px 16px;color:var(--muted);font-size:12.5px}
+.cli-rodape{border-top:1px solid var(--line);padding:10px 12px;background:color-mix(in srgb,var(--calc) 50%,var(--surface))}
+.cli-add{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed var(--line);border-radius:8px;background:var(--surface);padding:8px;color:var(--muted);font-weight:500}
+.cli-add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.cli-novo{display:flex;flex-direction:column;gap:8px}
+.cli-novo .row{justify-content:flex-end;gap:6px}
+.clientes .confirm{margin:4px 8px 8px}
+@media (max-width:980px){.brand2,.conta,.nav-label{display:none}nav.side a.nav-item.ativo::before{display:none}}
+.cols2{grid-template-columns:280px 1fr}
+@media (max-width:980px){.cols2{grid-template-columns:1fr}}

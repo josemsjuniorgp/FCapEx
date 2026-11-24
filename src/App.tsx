@@ -1,6 +1,6 @@
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { ProvedorSessao, useSessao } from './app/Sessao';
-import { ProvedorAviso } from './app/ui';
+import { iniciais, ProvedorAviso } from './app/ui';
 import { NOME_PAPEL } from './dados/api';
 import { Biblioteca } from './telas/Biblioteca';
 import { Comparar } from './telas/Comparar';
@@ -29,18 +29,23 @@ function Shell() {
   return (
     <div className="app">
       <nav className="side" aria-label="Navegação">
-        <div className="brand"><i>PX</i><span>Montador de PX</span></div>
+        <div className="brand2"><i>PX</i><div><b>Montador de PX</b><small>Orçamentos CapEx</small></div></div>
+        <div className="nav-label">Menu</div>
         {MENU.map(([to, nome, d]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'on' : '')}
-            aria-current={undefined} style={({ isActive }) => (isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : undefined)}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive ? ' ativo' : '')}>
             {I(d)}{nome}
           </NavLink>
         ))}
-        <div className="foot stack" style={{ gap: 6 }}>
-          <strong style={{ color: 'var(--ink)' }}>{empresa.nome}</strong>
-          <span>{NOME_PAPEL[empresa.papel]} · {sessao.user.email}</span>
-          {empresas.length > 1 && <button className="linkbtn" onClick={() => escolherEmpresa(null)}>Trocar de empresa</button>}
-          <button className="linkbtn" onClick={sair}>Sair</button>
+        <div className="conta">
+          <div className="conta-cab">
+            <span className="avatar" aria-hidden="true">{iniciais(empresa.nome)}</span>
+            <div><b title={empresa.nome}>{empresa.nome}</b><small>{NOME_PAPEL[empresa.papel]}</small></div>
+          </div>
+          <span className="conta-email" title={sessao.user.email}>{sessao.user.email}</span>
+          <div className="conta-acoes">
+            {empresas.length > 1 && <button onClick={() => escolherEmpresa(null)}>Trocar empresa</button>}
+            <button onClick={sair}>Sair</button>
+          </div>
         </div>
       </nav>
       <main className="main">

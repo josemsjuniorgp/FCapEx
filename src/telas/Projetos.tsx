@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
-import { brlCurto, Confirmar, plural, useAcao, Vazio, dataHora } from '../app/ui';
+import { brlCurto, Confirmar, dataHora, iniciais, plural, useAcao, Vazio } from '../app/ui';
 import {
   criarCliente, criarProjeto, excluirCliente, excluirProjeto, excluirPx, listarClientes, listarItens,
   listarProjetos, listarPxs, revisoesDaEmpresa, type Cliente, type Projeto, type Px, type Revisao,
@@ -20,6 +20,7 @@ export function Projetos() {
   const [resumo, setResumo] = useState<Record<string, Totais>>({});
   const [cliente, setCliente] = useState<string | null>(null);
   const [novoCliente, setNovoCliente] = useState('');
+  const [criandoCliente, setCriandoCliente] = useState(false);
   const [novoProjeto, setNovoProjeto] = useState<string | null>(null);
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [novaPx, setNovaPx] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export function Projetos() {
 
   async function addCliente() {
     if (!empresa || !novoCliente.trim()) return;
-    if (await acao(() => criarCliente(empresa.id, novoCliente), `Cliente "${novoCliente.trim()}" criado.`)) { setNovoCliente(''); carregar(); }
+    if (await acao(() => criarCliente(empresa.id, novoCliente), `Cliente "${novoCliente.trim()}" criado.`)) { setNovoCliente(''); setCriandoCliente(false); carregar(); }
   }
   async function addProjeto() {
     if (!empresa || !cliente || !novoProjeto?.trim()) return;
@@ -61,18 +62,23 @@ export function Projetos() {
 
   return (
     <div className="cols2">
-      <aside className="card" style={{ padding: 10, alignSelf: 'start' }}>
-        <h3 style={{ padding: '4px 8px 8px' }}>Clientes</h3>
-        <div className="list">
+      <aside className="card clientes">
+        <div className="cli-cab"><h3>Clientes</h3><span className="contador">{clientes.length}</span></div>
+        <div className="cli-lista">
           {clientes.map(c => {
             const ids = projetos.filter(p => p.cliente_id === c.id).map(p => p.id);
             return (
               <div key={c.id}>
-                <div className="cl">
-                  <button aria-pressed={cliente === c.id} onClick={() => setCliente(c.id)}>
-                    {c.nome}<br /><small className="note">{plural(ids.length, 'projeto', 'projetos')} · {nPx(ids)} PX</small>
+                <div className={'cli' + (cliente === c.id ? ' ativo' : '')}>
+                  <button className="cli-btn" aria-pressed={cliente === c.id} onClick={() => setCliente(c.id)}>
+                    <span className="avatar" aria-hidden="true">{iniciais(c.nome)}</span>
+                    <span className="cli-txt"><b>{c.nome}</b><small>{plural(ids.length, 'projeto', 'projetos')} · {nPx(ids)} PX</small></span>
                   </button>
-                  {ehAdmin && <button className="btn small danger" onClick={() => setPerguntar('c:' + c.id)}>Excluir</button>}
+                  {ehAdmin && (
+                    <button className="icone-btn" title="Excluir cliente" aria-label={`Excluir cliente ${c.nome}`} onClick={() => setPerguntar('c:' + c.id)}>
+                      <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>
+                    </button>
+                  )}
                 </div>
                 {perguntar === 'c:' + c.id && (
                   <Confirmar msg={<>Excluir <b>{c.nome}</b> com {plural(ids.length, 'projeto', 'projetos')} e {nPx(ids)} PX?</>}
@@ -81,13 +87,23 @@ export function Projetos() {
               </div>
             );
           })}
-          {!clientes.length && <span className="note" style={{ padding: 8 }}>Nenhum cliente ainda.</span>}
+          {!clientes.length && <div className="cli-vazio">Nenhum cliente ainda.{ehAdmin ? ' Crie o primeiro abaixo.' : ''}</div>}
         </div>
         {ehAdmin && (
-          <div className="row" style={{ padding: 8 }}>
-            <input className="in" style={{ flex: 1, minWidth: 0 }} placeholder="Novo cliente" value={novoCliente}
-              onChange={e => setNovoCliente(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCliente()} />
-            <button className="btn small" onClick={addCliente} disabled={!novoCliente.trim()}>Criar</button>
+          <div className="cli-rodape">
+            {criandoCliente ? (
+              <div className="cli-novo">
+                <input className="in" autoFocus placeholder="Nome do cliente" value={novoCliente}
+                  onChange={e => setNovoCliente(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addCliente(); if (e.key === 'Escape') { setCriandoCliente(false); setNovoCliente(''); } }} />
+                <div className="row">
+                  <button className="btn small" onClick={() => { setCriandoCliente(false); setNovoCliente(''); }}>Cancelar</button>
+                  <button className="btn small primary" onClick={addCliente} disabled={!novoCliente.trim()}>Criar cliente</button>
+                </div>
+              </div>
+            ) : (
+              <button className="cli-add" onClick={() => setCriandoCliente(true)}>+ Novo cliente</button>
+            )}
           </div>
         )}
       </aside>
@@ -105,7 +121,7 @@ export function Projetos() {
             <button className="btn" onClick={() => setNovoProjeto(null)}>Cancelar</button>
           </div>
         )}
-        {!cliente && <Vazio>{ehAdmin ? 'Crie o primeiro cliente na lista à esquerda.' : 'Nenhum cliente cadastrado.'}</Vazio>}
+        {!cliente && <Vazio>{ehAdmin ? 'Crie o primeiro cliente no botão "+ Novo cliente", à esquerda.' : 'Nenhum cliente cadastrado.'}</Vazio>}
         {cliente && !projsDoCliente.length && <Vazio>Este cliente ainda não tem projetos.</Vazio>}
         {projsDoCliente.map(p => {
           const lista = pxs.filter(x => x.projeto_id === p.id);
