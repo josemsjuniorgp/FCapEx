@@ -15,7 +15,7 @@ const TRIB: Tributo[] = [
   T('iss', 0.05, { fornecimento: false }),
   T('irrf', 0.15, { fornecimento: false, nacional: false }),
 ];
-const P: Parametros = { cambio: { BRL: 1, USD: 5.2, EUR: null }, tributos: TRIB };
+const P: Parametros = { cambio: { BRL: 1, USD: 5.2, EUR: null }, tributos: TRIB, fretes: [] };
 const item = (o: Partial<Item>): Item => ({
   ...itemVazio('x', 1), desc: 'Item', qtd: 10, preco: 100, pacote: 'P-1', tipo: 'C', orig: 'N', moeda: 'BRL', ...o,
 });
@@ -177,5 +177,62 @@ describe('totais e grupos', () => {
     expect(g.get('x0')).toBeNull();
     expect(g.get('a')).toBe('t1');
     expect(g.get('b')).toBe('t2');
+  });
+});
+
+describe('fretes', () => {
+  const FR = [
+    { id: 'fn', tipo: 'nacional' as const, nome: 'Rodoviário SP-MG', local: 'MG', criterio: 'valor' as const, valor: 500, moeda: 'BRL' },
+    { id: 'fp', tipo: 'nacional' as const, nome: '3% do líquido', local: 'SP', criterio: 'percentual' as const, valor: 0.03, moeda: 'BRL' },
+    { id: 'fi', tipo: 'internacional' as const, nome: 'Marítimo China', local: 'China', criterio: 'valor' as const, valor: 200, moeda: 'USD' },
+    { id: 'fe', tipo: 'internacional' as const, nome: 'Aéreo Alemanha', local: 'Alemanha', criterio: 'valor' as const, valor: 100, moeda: 'EUR' },
+  ];
+  const PF: Parametros = { ...P, fretes: FR };
+  const aliqSvc = 0.0165 + 0.076 + 0.05;
+
+  it('frete nacional por valor: único por linha, soma à base antes dos tributos', () => {
+    const r = calcular(item({ fnac: 'fn', bdi: 0.1 }), PF);
+    expect(r.fnacv).toBe(500);
+    expect(r.base).toBeCloseTo(1000 * 1.1 + 500, 6);
+    expect(r.parc).toBeCloseTo((1100 + 500) / (1 - aliqSvc), 6);
+    expect(r.liq).toBeCloseTo(1000, 6);               // líquido não inclui frete
+    const dobro = calcular(item({ fnac: 'fn', qtd: 20 }), PF);
+    expect(dobro.fnacv).toBe(500);                    // não multiplica pela quantidade
+  });
+
+  it('frete por percentual do valor líquido', () => {
+    const r = calcular(item({ fnac: 'fp', moeda: 'USD' }), PF);
+    expect(r.fnacv).toBeCloseTo(5200 * 0.03, 6);
+  });
+
+  it('frete internacional em dólar convertido pelo câmbio; nacional + internacional somam', () => {
+    const r = calcular(item({ fnac: 'fn', fint: 'fi' }), PF);
+    expect(r.fintv).toBeCloseTo(200 * 5.2, 6);
+    expect(r.base).toBeCloseTo(1000 + 500 + 1040, 6);
+  });
+
+  it('frete em moeda sem câmbio = erro explicado no Check', () => {
+    const it1 = item({ fint: 'fe' });
+    const r = calcular(it1, PF);
+    expect(r.chk).toBe('ERRO');
+    expect(r.ger).toBeNull();
+    expect(detalheCheck(it1, r, PF)).toContain('Aéreo Alemanha');
+  });
+
+  it('sem frete ou frete excluído: valor nulo, não altera o cálculo', () => {
+    const sem = calcular(item({}), PF), excl = calcular(item({ fnac: 'nao-existe' }), PF);
+    expect(sem.fnacv).toBeNull();
+    expect(excl.fnacv).toBeNull();
+    expect(excl.ger).toBeCloseTo(sem.ger!, 10);
+  });
+
+  it('Check da linha OK cita o frete', () => {
+    const it1 = item({ fnac: 'fn' });
+    expect(detalheCheck(it1, calcular(it1, PF), PF)).toContain('Frete: Rodoviário SP-MG');
+  });
+
+  it('colunas de frete fora do modelo da PX: sem frete', () => {
+    const cols = new Set(['seq', 'desc', 'qtd', 'preco', 'ger', 'chk', 'tipo', 'orig', 'moeda']);
+    expect(calcular(item({ fnac: 'fn' }), PF, cols).fnacv).toBeNull();
   });
 });

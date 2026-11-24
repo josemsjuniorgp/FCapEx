@@ -1,6 +1,6 @@
 import { COLUNAS, PADROES } from './colunas';
 import { vazio } from './normalizacao';
-import type { Item, Parametros, Resultado, Tributo } from './tipos';
+import type { Frete, Item, Parametros, Resultado, Tributo } from './tipos';
 
 const SERVICO = ['C', 'S', 'T', 'M'];
 const OBRIG_CALCULO = ['qtd', 'preco', 'moeda', 'orig', 'tipo'] as const;
@@ -24,8 +24,18 @@ export function tributoSeAplica(t: Tributo, tipo: string, orig: string): boolean
 export const tributoLigado = (t: Tributo, it: Item, tipo: string, orig: string) =>
   it.tribLigados?.[t.id] ?? tributoSeAplica(t, tipo, orig);
 
+const freteDe = (p: Parametros, id: string | null | undefined): Frete | null =>
+  (id ? p.fretes.find(f => f.id === id) ?? null : null);
+
+/** Valor do frete em R$: valor único por linha (convertido pela moeda do frete) ou % do valor líquido. */
+function valorFrete(f: Frete | null, liq: number, p: Parametros): number | null {
+  if (!f) return null;
+  if (f.criterio === 'percentual') return liq * f.valor;
+  return f.valor * (p.cambio[f.moeda] ?? 0);
+}
+
 export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): Resultado {
-  const vazioRes = { liq: null, base: null, trib: null, parc: null, ger: null, ligados: {}, tribs: {}, aliquota: 0 };
+  const vazioRes = { liq: null, fnacv: null, fintv: null, base: null, trib: null, parc: null, ger: null, ligados: {}, tribs: {}, aliquota: 0 };
   if (item.titulo) return { chk: 'TITULO', ...vazioRes };
   const r = comPadroes(item, cols);
   const fx = p.cambio[String(r.moeda).toUpperCase()] ?? undefined;
@@ -42,13 +52,17 @@ export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): 
     if (on) aliquota += t.aliquota;
   }
   const aliqInvalida = aliquota >= 1;
+  const fretes = [freteDe(p, r.fnac), freteDe(p, r.fint)];
+  const freteSemCambio = fretes.some(f => f && f.criterio === 'valor' && (p.cambio[f.moeda] ?? null) === null);
   const out: Resultado = {
-    chk: faltando ? 'INCOMPLETO' : (!valido || semCambio || aliqInvalida) ? 'ERRO' : 'OK',
+    chk: faltando ? 'INCOMPLETO' : (!valido || semCambio || aliqInvalida || freteSemCambio) ? 'ERRO' : 'OK',
     ...vazioRes, ligados, aliquota,
   };
-  if (!vazio(r.qtd) && !vazio(r.preco) && !semCambio && valido && !aliqInvalida) {
+  if (!vazio(r.qtd) && !vazio(r.preco) && !semCambio && valido && !aliqInvalida && !freteSemCambio) {
     out.liq = r.qtd! * r.preco! * fx!;
-    out.base = out.liq * (1 + (r.bdi || 0));
+    out.fnacv = valorFrete(fretes[0], out.liq, p);
+    out.fintv = valorFrete(fretes[1], out.liq, p);
+    out.base = out.liq * (1 + (r.bdi || 0)) + (out.fnacv || 0) + (out.fintv || 0);
     out.parc = out.base / (1 - aliquota);
     out.trib = out.parc - out.base;
     out.tribs = {};
@@ -66,7 +80,8 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
   if (res.chk === 'TITULO') return 'Linha de título (agrupador): não tem quantidade nem preço e não entra nos totais.';
   const nomes = p.tributos.filter(t => res.ligados[t.id]).map(t => `${t.nome} ${pct(t.aliquota)}`);
   const trib = nomes.length ? `Tributos ligados: ${nomes.join(', ')} (total ${pct(res.aliquota)}).` : 'Nenhum tributo ligado nesta linha.';
-  if (res.chk === 'OK') return `Linha completa e classificada corretamente. ${trib}`;
+  const fr = [freteDe(p, item.fnac), freteDe(p, item.fint)].filter(Boolean).map(f => f!.nome);
+  if (res.chk === 'OK') return `Linha completa e classificada corretamente. ${trib}${fr.length ? ` Frete: ${fr.join(' + ')}.` : ''}`;
   const r = comPadroes(item, cols);
   const msgs: string[] = [];
   const miss = OBRIG_CALCULO.filter(k => vazio(r[k]));
@@ -76,6 +91,11 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
     msgs.push(`Tipo de Trabalho = "${r.tipo}" não é válido. Escolha (F) Fornecimento, (C) Construção, (S) Serviços, (T) Turn-key ou (M) Montagem.`);
   if (!vazio(r.moeda) && (p.cambio[String(r.moeda).toUpperCase()] ?? null) === null)
     msgs.push(`Moeda "${r.moeda}" não tem câmbio cadastrado. Cadastre nos parâmetros da empresa ou escolha outra moeda.`);
+  for (const id of [r.fnac, r.fint]) {
+    const f = freteDe(p, id);
+    if (f && f.criterio === 'valor' && (p.cambio[f.moeda] ?? null) === null)
+      msgs.push(`O frete "${f.nome}" está em ${f.moeda}, que não tem câmbio cadastrado. Cadastre o câmbio em Parâmetros.`);
+  }
   if (res.aliquota >= 1) msgs.push(`A soma dos tributos ligados é ${pct(res.aliquota)}: precisa ser menor que 100%. Desligue algum tributo nesta linha.`);
   return msgs.join('\n') || 'Verifique os dados da linha.';
 }

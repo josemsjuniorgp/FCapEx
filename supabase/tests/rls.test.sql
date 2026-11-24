@@ -202,3 +202,31 @@ select public.emitir_revisao((select v from ids where k='pxt'), 0);
 select pg_temp.confere((select tributos_ligados ->> 'abc' from public.itens i join public.revisoes r on r.id = i.revisao_id
   where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null) = 'false', 'revisão nova copia tributos ligados/desligados');
 reset role;
+
+-- 18) Fretes: só admin cadastra, isolados por empresa, item só usa frete da própria empresa, revisão copia
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+with f as (insert into public.fretes (empresa_id, tipo, nome, local, criterio, valor)
+  values ((select v from ids where k='A'), 'nacional', 'Rodoviário SP-MG', 'MG', 'valor', 500) returning id)
+insert into ids select 'frA', id from f;
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+select pg_temp.deve_falhar(format($q$insert into public.fretes (empresa_id, tipo, nome) values (%L, 'nacional', 'x')$q$, (select v from ids where k='A')), 'orçamentista cadastrar frete');
+insert into public.itens (empresa_id, revisao_id, posicao, seq, descricao, frete_nacional)
+  select (select v from ids where k='A'), r.id, 2, 2, 'Com frete', (select v from ids where k='frA')
+    from public.revisoes r where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null;
+select pg_temp.deve_falhar(format($q$insert into public.itens (empresa_id, revisao_id, posicao, seq, descricao, frete_internacional) select %L, r.id, 3, 3, 'x', %L from public.revisoes r where r.px_id = %L and r.emitida_em is null$q$,
+  (select v from ids where k='A'), (select v from ids where k='frA'), (select v from ids where k='pxt')), 'frete nacional usado como internacional');
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.frete_nacional = (select v from ids where k='frA')) = 1, 'revisão copia o frete escolhido');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.confere((select count(*) from public.fretes) = 0, 'estranho não vê fretes');
+reset role;
+-- excluir o frete não impede emitir a próxima revisão (o item fica sem frete)
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+delete from public.fretes where id = (select v from ids where k='frA');
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com frete' and i.frete_nacional is null) = 1, 'frete excluído: item copiado sem frete');
+reset role;

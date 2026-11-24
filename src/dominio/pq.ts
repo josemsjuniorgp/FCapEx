@@ -217,7 +217,7 @@ function converter(cel: Celula | undefined, destino: string): string | number | 
 
 export const itemVazio = (id: string, seq: number): Item => ({
   id, seq, titulo: false, pqdoc: '', item: '', area: '', subarea: '', ativo: '', desc: '', un: '',
-  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null, tribLigados: {},
+  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null, tribLigados: {}, fnac: null, fint: null,
 });
 
 export interface OpcoesImportacao {

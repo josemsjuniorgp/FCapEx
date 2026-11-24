@@ -13,6 +13,7 @@ const P: Parametros = {
     { id: 'cofins', nome: 'COFINS', aliquota: 0.076, fornecimento: true, servico: true, nacional: true, importado: true },
     { id: 'iss', nome: 'ISS', aliquota: 0.05, fornecimento: false, servico: true, nacional: true, importado: true },
   ],
+  fretes: [],
 };
 const novo = (seq: number, o: Partial<Item>): Item => ({ ...itemVazio('i' + seq, seq), ...o });
 const ITENS: Item[] = [
@@ -161,6 +162,27 @@ describe('exportação para Excel', async () => {
     const linhaTotal = Number(achar(w, 'TOTAL')!.row);
     expect(w.getCell(linhaTotal, iIss).value).toBeCloseTo(tot.porTributo.iss, 6);
     expect(w.getCell(linhaTotal, iPis).value).toBeCloseTo(tot.porTributo.pis, 6);
+  });
+
+  it('fretes: nome na coluna, valor convertido, 0,00 sem frete, total e aba Parâmetros', async () => {
+    const fretes = [
+      { id: 'fn', tipo: 'nacional' as const, nome: 'Rodoviário', local: 'MG', criterio: 'valor' as const, valor: 500, moeda: 'BRL' },
+      { id: 'fi', tipo: 'internacional' as const, nome: 'Marítimo', local: 'China', criterio: 'percentual' as const, valor: 0.05, moeda: 'USD' },
+    ];
+    const itens = ITENS.map(i => (i.id === 'i2' ? { ...i, fnac: 'fn', fint: 'fi' } : i));
+    const d = { ...DADOS, itens, parametros: { ...P, fretes } };
+    const wb2 = await abrir(d); const w = wb2.getWorksheet('PX')!;
+    const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
+    const col = (h: string) => cab.indexOf(h) + 1;
+    expect(w.getCell(16, col('Frete nacional')).value).toBe('Rodoviário · MG');
+    expect(w.getCell(16, col('Frete internacional')).value).toBe('Marítimo · China');
+    expect(w.getCell(16, col('Frete nacional (R$)')).value).toBe(500);
+    expect(w.getCell(16, col('Frete internacional (R$)')).value).toBeCloseTo(10 * 1000 * 0.05, 6);
+    expect(w.getCell(18, col('Frete nacional (R$)')).value).toBe(0);               // item calculado sem frete
+    const lt = Number(achar(w, 'TOTAL')!.row);
+    expect(w.getCell(lt, col('Frete nacional (R$)')).value).toBe(500);
+    const t = texto(wb2.getWorksheet('Parâmetros')!);
+    for (const v of ['FRETES NACIONAIS', 'Rodoviário', 'MG', 'FRETES INTERNACIONAIS', 'Marítimo', '% do valor líquido']) expect(t).toContain(v);
   });
 
   it('nome do arquivo', () => {

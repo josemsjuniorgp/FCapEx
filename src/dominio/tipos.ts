@@ -21,6 +21,8 @@ export interface Item {
   bdi: number | null;   // fração
   /** escolha manual por tributo nesta linha (id do tributo → ligado/desligado); ausente = regra do tributo */
   tribLigados: Record<string, boolean>;
+  fnac: string | null;  // id do frete nacional escolhido
+  fint: string | null;  // id do frete internacional escolhido
 }
 
 /** Tributo da empresa: alíquota e onde se aplica. */
@@ -34,11 +36,23 @@ export interface Tributo {
   importado: boolean;    // aplica-se a Natureza I
 }
 
+/** Frete cadastrado pela empresa. */
+export interface Frete {
+  id: string;
+  tipo: 'nacional' | 'internacional';
+  nome: string;
+  local: string;                      // UF (nacional) ou país de origem (internacional)
+  criterio: 'valor' | 'percentual';   // valor único por linha, ou % do valor líquido do item
+  valor: number;                      // valor na moeda do frete, ou fração (0,03 = 3%)
+  moeda: string;                      // moeda do valor (nacional = BRL)
+}
+
 /** Parâmetros de cálculo de cada empresa (vêm do banco). */
 export interface Parametros {
   /** câmbio para R$ por código de moeda; moeda ausente ou nula = sem câmbio */
   cambio: Record<string, number | null>;
   tributos: Tributo[];
+  fretes: Frete[];
 }
 
 export type Check = 'OK' | 'INCOMPLETO' | 'ERRO' | 'TITULO';
@@ -46,7 +60,9 @@ export type Check = 'OK' | 'INCOMPLETO' | 'ERRO' | 'TITULO';
 export interface Resultado {
   chk: Check;
   liq: number | null;   // líquido: quantidade × preço × câmbio (R$), sem BDI, tributos e provisão
-  base: number | null;  // preço total s/ tributos (R$)
+  fnacv: number | null; // frete nacional (R$)
+  fintv: number | null; // frete internacional (R$)
+  base: number | null;  // preço total s/ tributos (R$), com fretes
   trib: number | null;  // soma dos tributos ligados (R$)
   parc: number | null;
   ger: number | null;

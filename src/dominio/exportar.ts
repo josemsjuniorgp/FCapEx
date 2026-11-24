@@ -221,8 +221,8 @@ function abaPx(
           cel.fill = fill(fundo);
           cel.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
-          const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger'];
-          cel.value = v ?? null;
+          const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv'];
+          cel.value = v ?? ((c.k === 'fnacv' || c.k === 'fintv') && r.base !== null ? 0 : null);
           cel.numFmt = FMT_BRL;
           cel.fill = fill(par ? 'FFE7ECF0' : COR.calc);
           if (c.k === 'ger') cel.font = { name: FONTE, size: 10, bold: true, color: { argb: COR.tinta } };
@@ -232,6 +232,7 @@ function abaPx(
       const v = (it as unknown as Record<string, unknown>)[c.k];
       if (c.k === 'seq') cel.value = it.seq;
       else if (c.k === 'tipo' || c.k === 'orig') cel.value = v ? rotuloOpcao(c.k, String(v)) : null;
+      else if (c.k === 'fnac' || c.k === 'fint') { const f = d.parametros.fretes.find(x => x.id === v); cel.value = f ? `${f.nome}${f.local ? ` · ${f.local}` : ''}` : null; }
       else if (c.num) {
         cel.value = (v as number | null) ?? null;
         cel.numFmt = c.pct ? '0.0%' : c.k === 'preco' ? fmtMoeda(simbolo(it.moeda || 'BRL')) : c.k === 'hh' ? '#,##0' : '#,##0.00';
@@ -250,7 +251,7 @@ function abaPx(
   // --- linha de total
   const ultimaItem = linha - 1;
   const rt = ws.getRow(linha);
-  const somas: Record<string, number> = { base: 0, trib: 0, parc: 0, ger: 0 };
+  const somas: Record<string, number> = { fnacv: 0, fintv: 0, base: 0, trib: 0, parc: 0, ger: 0 };
   for (const it of d.itens) for (const k of Object.keys(somas)) somas[k] += res.get(it.id)?.[k as 'base'] || 0;
   for (const c of colunas) { const id = idDoTributo(c.k); if (id) somas[c.k] = tot.porTributo[id] || 0; }
   colunas.forEach((c, i) => {
@@ -397,6 +398,15 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
   bloco('Moedas e câmbio', ['Código', 'Nome', 'Símbolo', 'Câmbio (R$)'],
     d.moedas.map(m => [m.codigo, m.nome, m.simbolo, m.cambio_brl ?? 'sem câmbio']), [null, null, null, '#,##0.0000']);
   const sim = (v: boolean) => (v ? 'sim' : '—');
+  const CRIT = { valor: 'Valor por linha', percentual: '% do valor líquido' };
+  for (const tipo of ['nacional', 'internacional'] as const) {
+    const fs = d.parametros.fretes.filter(f => f.tipo === tipo);
+    bloco(`Fretes ${tipo === 'nacional' ? 'nacionais' : 'internacionais'}`, ['Frete', tipo === 'nacional' ? 'UF' : 'País', 'Critério', 'Valor'],
+      fs.length ? fs.map(f => [f.nome, f.local, CRIT[f.criterio], f.criterio === 'percentual' ? f.valor : f.valor]) : [['(nenhum)', '', '', null]],
+      [null, null, null, null]);
+    // formato por linha: percentual ou moeda do frete
+    fs.forEach((f, i) => { const c = ws.getCell(linha - 2 - fs.length + i, 4); c.numFmt = f.criterio === 'percentual' ? '0.00%' : fmtMoeda(d.moedas.find(m => m.codigo === f.moeda)?.simbolo ?? f.moeda); });
+  }
   bloco('Tributos', ['Tributo', 'Aplica-se a', 'Alíquota', 'Forn. / Serv. / Nac. / Imp.'],
     d.parametros.tributos.length
       ? d.parametros.tributos.map(t => [t.nome,

@@ -10,7 +10,7 @@ import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calc
 import { colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
-import type { Resultado } from '../dominio/tipos';
+import type { Frete, Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
 import { FiltroGrupo } from './FiltroGrupo';
@@ -273,7 +273,7 @@ export function EditorPx() {
                 return (
                   <tr key={it.id} className={(it.titulo ? 'title ' : '') + (sel === it.id ? 'sel' : '')} onClick={() => setSel(it.id)}>
                     {colunas.map(c => (
-                      <Celula key={c.k} c={c} it={it} r={r} editavel={editavel}
+                      <Celula key={c.k} c={c} it={it} r={r} editavel={editavel} fretes={parametros.fretes}
                         moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}
                         simbolo={moedas.find(m => m.codigo === it.moeda)?.simbolo ?? ''}
                         dica={c.k === 'chk' ? detalheCheck(it, r, parametros, modelo) : undefined}
@@ -360,8 +360,8 @@ function agruparCabecalho(cols: Coluna[], extra: boolean): ReactNode[] {
 }
 
 // ------------------------------------------------------------------ célula da grade
-function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
-  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string;
+function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes }: {
+  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[];
   dica?: string; onSalvar: (v: unknown) => void;
 }) {
   if (c.k === 'seq') return <td className="sticky c1 mono">{it.seq}</td>;
@@ -396,14 +396,31 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
       const [cls, txt] = ROTULO_CHK[r.chk];
       return <td className="calc chk" title={dica}><span className={'pill ' + cls}><i />{txt}</span></td>;
     }
-    const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger'];
+    const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger' | 'fnacv' | 'fintv'];
+    const semFrete = (c.k === 'fnacv' || c.k === 'fintv') && v === null && r.base !== null;
     return (
       <td className="calc" title={c.f}>
-        {v === null ? '—' : nf(v, 2)}
+        {semFrete ? '0,00' : v === null ? '—' : nf(v, 2)}
       </td>
     );
   }
   const valor = (it as unknown as Record<string, unknown>)[c.k];
+  if (c.k === 'fnac' || c.k === 'fint') {
+    const tipo = c.k === 'fnac' ? 'nacional' : 'internacional';
+    const ops = fretes.filter(f => f.tipo === tipo);
+    const id = (c.k === 'fnac' ? it.fnac : it.fint) ?? '';
+    const atual = ops.find(f => f.id === id);
+    const rot = (f: Frete) => `${f.nome}${f.local ? ` · ${f.local}` : ''}`;
+    if (!editavel) return <td className="txt">{atual ? rot(atual) : ''}</td>;
+    return (
+      <td className="in-c">
+        <select value={atual ? id : ''} onChange={e => onSalvar(e.target.value || null)} title={atual ? rot(atual) : 'Sem frete'}>
+          <option value="">sem frete</option>
+          {ops.map(f => <option key={f.id} value={f.id}>{rot(f)}</option>)}
+        </select>
+      </td>
+    );
+  }
   if (c.k === 'tipo' || c.k === 'orig' || c.k === 'moeda') {
     const ops: readonly (readonly [string, string])[] = c.k === 'moeda' ? moedas : OPCOES[c.k];
     const s = String(valor ?? '');

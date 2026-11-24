@@ -32,7 +32,11 @@ export const COLUNAS: Coluna[] = [
   { k: 'moeda', h: 'Moeda', g: 'Contratação', t: 'in', req: true, w: 130 },
   { k: 'preco', h: 'Preço unit.', g: 'Preço', t: 'in', num: true, req: true, dec: 2 },
   { k: 'bdi', h: 'BDI', g: 'Preço', t: 'in', num: true, pct: true },
-  { k: 'base', h: 'Preço total s/ trib. (R$)', g: 'Preço', t: 'calc', f: 'qtd × preço × (1 + BDI) × câmbio' },
+  { k: 'fnac', h: 'Frete nacional', g: 'Frete', t: 'in', w: 190 },
+  { k: 'fnacv', h: 'Frete nacional (R$)', g: 'Frete', t: 'calc', f: 'valor do frete (por linha) ou % do valor líquido' },
+  { k: 'fint', h: 'Frete internacional', g: 'Frete', t: 'in', w: 190 },
+  { k: 'fintv', h: 'Frete internacional (R$)', g: 'Frete', t: 'calc', f: 'valor do frete × câmbio da moeda do frete, ou % do valor líquido' },
+  { k: 'base', h: 'Preço total s/ trib. (R$)', g: 'Preço', t: 'calc', f: 'qtd × preço × (1 + BDI) × câmbio + fretes' },
   { k: 'trib', h: 'Tributos (R$)', g: 'Tributos', t: 'calc', f: 'total ÷ (1 − alíquota) − base, conforme regime Natureza × Tipo' },
   { k: 'parc', h: 'Total parcial (R$)', g: 'Totais', t: 'calc', f: 'base + tributos' },
   { k: 'ger', h: 'Total geral (R$)', g: 'Totais', t: 'calc', f: 'parcial × (1 + provisão)', lock: true },
@@ -50,7 +54,7 @@ export const OPCOES = {
 } as const;
 
 /** Valor usado no cálculo quando a coluna não faz parte do modelo da PX. */
-export const PADROES = { un: '', prov: 0, hh: 0, pacote: 'N/A', tipo: 'F', orig: 'N', moeda: 'BRL', bdi: 0 } as const;
+export const PADROES = { un: '', prov: 0, hh: 0, pacote: 'N/A', tipo: 'F', orig: 'N', moeda: 'BRL', bdi: 0, fnac: null, fint: null } as const;
 
 /** Chave da coluna de um tributo da empresa. */
 export const chaveTributo = (id: string) => 'tx:' + id;
