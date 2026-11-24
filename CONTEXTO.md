@@ -57,8 +57,8 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 ### Grade
 - Ordem das linhas = ordem da PQ/importação (nunca reordenar pelo Item PQ; números repetidos são mantidos).
 - **Linhas de título**: só Nº, Item PQ e Descrição; botão "Virar título/Virar item" sem perder valores.
-  Cor por nível (pela numeração do Item PQ; o nível mais alto da PX é o 1º): laranja pastel (pêssego): 1º mais forte, 2º, 3º,
-  4º mais claro (5º em diante = 4º); letra marrom-escura. Mesmas cores no Excel. Cabeçalho da grade: grupos verde-escuro, colunas verde intermediário.
+  Cor por nível (pela numeração do Item PQ; o nível mais alto da PX é o 1º): tons de areia (neutro quente): 1º mais forte, 2º, 3º,
+  4º mais claro (5º em diante = 4º); letra marrom-acinzentada. Mesmas cores no Excel. Cabeçalho da grade: grupos verde-escuro, colunas verde intermediário.
 - **Grupos**: caixa suspensa com busca; escolher um título inclui os subníveis (1.1 → 1.1.1…).
 - Colunas: Nº · Documento de Origem (antigo "Nº da PQ") · Item PQ · Área/Subárea/Ativo · Descrição · Unid ·
   Quantidade · Provisão · HH · Pacote (só texto) · Tipo de Trabalho (F, C, S, T, M) · Natureza (N, I) · Moeda ·

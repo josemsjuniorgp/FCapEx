@@ -137,12 +137,12 @@ export function gruposPorTitulo(itens: Item[]): Map<string, string | null> {
   return g;
 }
 
-/** Cores das linhas de título por nível: laranja pastel (pêssego), do 1º mais forte ao 4º mais claro. Hex sem "#". */
+/** Cores das linhas de título por nível: areia (neutro quente que combina com o petróleo), do 1º mais forte ao 4º mais claro. Hex sem "#". */
 export const CORES_TITULO = [
-  { fundo: 'F3C29B', letra: '5A2A0C' },
-  { fundo: 'F7D3B4', letra: '5A2A0C' },
-  { fundo: 'FAE2CD', letra: '5A2A0C' },
-  { fundo: 'FDF0E4', letra: '5A2A0C' },
+  { fundo: 'D9CBB3', letra: '3D3424' },
+  { fundo: 'E6DCCB', letra: '3D3424' },
+  { fundo: 'EFE8DC', letra: '4A4030' },
+  { fundo: 'F7F3EC', letra: '4A4030' },
 ] as const;
 
 /**
