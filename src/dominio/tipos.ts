@@ -38,6 +38,7 @@ export interface Resultado {
   pacote: boolean;      // item de pacote de serviço
   regime: Regime | '';
   chk: Check;
+  liq: number | null;   // líquido: quantidade × preço × câmbio (R$), sem BDI, tributos e provisão
   base: number | null;  // preço total s/ tributos (R$)
   trib: number | null;
   parc: number | null;

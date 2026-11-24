@@ -23,6 +23,20 @@ describe('calcular', () => {
     expect(r.ger).toBeCloseTo(r.parc! * 1.1, 6);
   });
 
+  it('líquido = quantidade × preço × câmbio, sem BDI, tributos e provisão', () => {
+    const r = calcular(item({ bdi: 0.25, prov: 0.1, moeda: 'USD' }), P);
+    expect(r.liq).toBeCloseTo(10 * 100 * 5.2, 6);
+    expect(r.base).toBeCloseTo(10 * 100 * 5.2 * 1.25, 6);
+    expect(calcular(item({ qtd: null }), P).liq).toBeNull();
+    expect(calcular(item({ titulo: true }), P).liq).toBeNull();
+  });
+
+  it('moeda adicionada pela empresa converte pelo câmbio cadastrado', () => {
+    const r = calcular(item({ moeda: 'GBP' }), { ...P, cambio: { ...P.cambio, GBP: 7 } });
+    expect(r.chk).toBe('OK');
+    expect(r.liq).toBeCloseTo(7000, 6);
+  });
+
   it('fornecimento importado em dólar converte pelo câmbio', () => {
     const r = calcular(item({ tipo: 'F', orig: 'I', moeda: 'USD' }), P);
     expect(r.regime).toBe('IF');
@@ -88,6 +102,7 @@ describe('totais e grupos', () => {
     const t = totais(lista, P);
     expect(t).toMatchObject({ ok: 1, inc: 1, err: 1, tit: 1 });
     expect(t.ger).toBeCloseTo(calcular(lista[0], P).ger!, 6);
+    expect(t.liq).toBeCloseTo(calcular(lista[0], P).liq!, 6);
   });
   it('cada item pertence ao título imediatamente acima', () => {
     const lista = [item({ id: 'x0' }), item({ id: 't1', titulo: true }), item({ id: 'a' }), item({ id: 't2', titulo: true }), item({ id: 'b' })];

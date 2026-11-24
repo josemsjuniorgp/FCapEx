@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
-import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao } from '../app/ui';
+import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, usdCurto } from '../app/ui';
 import {
   atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
   listarProjetos, listarRevisoes, type ItemPos, type Projeto, type Px, type Revisao,
@@ -120,7 +120,7 @@ export function EditorPx() {
   if (erro) return <div className="banner">Não foi possível abrir a PX: {erro}</div>;
   if (!px || !parametros || !t) return <p className="note">Carregando…</p>;
   const editavel = podeEditar && !!revAtual;
-  const usd = parametros.cambio.USD, eur = parametros.cambio.EUR;
+  const usd = parametros.cambio.USD;
 
   return (
     <div id="pxEdit">
@@ -130,8 +130,12 @@ export function EditorPx() {
         <span className="pill p-mut">{px.modelo_nome}</span>
       </header>
       <div className="kpis">
-        <div className="kpi"><small>Total geral</small><b>{brlCurto(t.ger)}</b></div>
-        <div className="kpi"><small>Total parcial</small><b>{brlCurto(t.parc)}</b></div>
+        <div className="kpi" title="Com BDI, tributos e provisão, convertido para R$"><small>Total Geral Bruto (R$)</small><b>{brlCurto(t.ger)}</b></div>
+        <div className="kpi" title="Somente quantidade × preço unitário, convertido para R$"><small>Total Geral Líquido (R$)</small><b>{brlCurto(t.liq)}</b></div>
+        <div className="kpi" title={usd ? `Total Geral Bruto ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
+          <small>Total Geral Bruto (US$)</small><b>{usd ? usdCurto(t.ger / usd) : '—'}</b></div>
+        <div className="kpi" title={usd ? `Total Geral Líquido ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
+          <small>Total Geral Líquido (US$)</small><b>{usd ? usdCurto(t.liq / usd) : '—'}</b></div>
         <div className="kpi"><small>Itens</small><b>{itens.length - t.tit}</b></div>
         <div className="row">
           <button className="pill p-ok" aria-pressed={filtro === 'OK'} onClick={() => setFiltro(filtro === 'OK' ? null : 'OK')}><i />{t.ok} ok</button>
@@ -140,7 +144,7 @@ export function EditorPx() {
           {filtro && <button className="linkbtn" onClick={() => setFiltro(null)}>limpar filtro</button>}
         </div>
         <span className="spacer" />
-        <span className="note">Câmbio: US$ {usd ? nf(usd, 4) : '—'} · € {eur ? nf(eur, 4) : '—'} (<Link to="/parametros">parâmetros</Link>)</span>
+        <span className="note">Câmbio: {moedas.filter(m => m.codigo !== 'BRL').map(m => `${m.simbolo} ${m.cambio_brl ? nf(m.cambio_brl, 4) : '—'}`).join(' · ') || '—'} (<Link to="/parametros">parâmetros</Link>)</span>
       </div>
       <div className="tools">
         <input className="in" type="search" placeholder="Buscar descrição, item, área, pacote…" value={busca} onChange={e => setBusca(e.target.value)} />

@@ -41,15 +41,24 @@ export function Parametros() {
           </tbody>
         </table>
         {ehAdmin && (
-          <div className="row" style={{ marginTop: 10 }}>
-            <input className="in mono" style={{ width: 80 }} placeholder="GBP" maxLength={3} value={nova.codigo} onChange={e => setNova({ ...nova, codigo: e.target.value.toUpperCase() })} />
-            <input className="in" placeholder="Libra" value={nova.nome} onChange={e => setNova({ ...nova, nome: e.target.value })} />
-            <input className="in" style={{ width: 70 }} placeholder="£" value={nova.simbolo} onChange={e => setNova({ ...nova, simbolo: e.target.value })} />
-            <input className="in" style={{ width: 110 }} placeholder="Câmbio" value={nova.cambio} onChange={e => setNova({ ...nova, cambio: e.target.value })} />
-            <button className="btn" disabled={!/^[A-Z]{3}$/.test(nova.codigo) || !nova.nome.trim()}
-              onClick={async () => { const v = parseNum(nova.cambio);
-                await exec(() => salvarMoeda(empresa.id, { codigo: nova.codigo, nome: nova.nome.trim(), simbolo: nova.simbolo.trim() || nova.codigo, cambio_brl: Number.isNaN(v) ? null : v }), 'Moeda adicionada.');
-                setNova({ codigo: '', nome: '', simbolo: '', cambio: '' }); }}>Adicionar moeda</button>
+          <div className="group-box stack" style={{ gap: 8, marginTop: 12 }}>
+            <strong>Nova moeda</strong>
+            <span className="note">Adicione quantas moedas precisar. Os itens nessa moeda são convertidos para R$ pelo câmbio informado.</span>
+            <div className="row" style={{ alignItems: 'flex-end' }}>
+              <label className="stack" style={{ gap: 3 }}><span className="note">Código (3 letras)</span>
+                <input className="in mono" style={{ width: 90 }} placeholder="GBP" maxLength={3} value={nova.codigo} onChange={e => setNova({ ...nova, codigo: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })} /></label>
+              <label className="stack" style={{ gap: 3 }}><span className="note">Nome</span>
+                <input className="in" placeholder="Libra esterlina" value={nova.nome} onChange={e => setNova({ ...nova, nome: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 3 }}><span className="note">Símbolo</span>
+                <input className="in" style={{ width: 80 }} placeholder="£" value={nova.simbolo} onChange={e => setNova({ ...nova, simbolo: e.target.value })} /></label>
+              <label className="stack" style={{ gap: 3 }}><span className="note">Câmbio (R$ por 1 unidade)</span>
+                <input className="in num" style={{ width: 150 }} placeholder="7,1000" value={nova.cambio} onChange={e => setNova({ ...nova, cambio: e.target.value })} /></label>
+              <button className="btn primary" disabled={!/^[A-Z]{3}$/.test(nova.codigo) || !nova.nome.trim() || moedas.some(m => m.codigo === nova.codigo)}
+                onClick={async () => { const v = parseNum(nova.cambio);
+                  await exec(() => salvarMoeda(empresa.id, { codigo: nova.codigo, nome: nova.nome.trim(), simbolo: nova.simbolo.trim() || nova.codigo, cambio_brl: Number.isNaN(v) ? null : v }), `Moeda ${nova.codigo} adicionada.`);
+                  setNova({ codigo: '', nome: '', simbolo: '', cambio: '' }); }}>Adicionar moeda</button>
+            </div>
+            {moedas.some(m => m.codigo === nova.codigo) && <span className="note">A moeda {nova.codigo} já está cadastrada: altere o câmbio dela na tabela acima.</span>}
           </div>
         )}
       </section>

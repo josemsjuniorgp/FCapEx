@@ -15,7 +15,7 @@ function comPadroes(item: Item, cols?: Set<string> | null): Item {
 }
 
 export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): Resultado {
-  if (item.titulo) return { pacote: false, regime: '', chk: 'TITULO', base: null, trib: null, parc: null, ger: null };
+  if (item.titulo) return { pacote: false, regime: '', chk: 'TITULO', liq: null, base: null, trib: null, parc: null, ger: null };
   const r = comPadroes(item, cols);
   const fx = p.cambio[String(r.moeda).toUpperCase()] ?? undefined;
   const pacotes = new Set(p.pacotesServico.map(chavePacote));
@@ -28,10 +28,11 @@ export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): 
   const out: Resultado = {
     pacote, regime,
     chk: faltando ? 'INCOMPLETO' : (!valido || semCambio) ? 'ERRO' : 'OK',
-    base: null, trib: null, parc: null, ger: null,
+    liq: null, base: null, trib: null, parc: null, ger: null,
   };
   if (!vazio(r.qtd) && !vazio(r.preco) && !semCambio && (valido || pacote)) {
-    out.base = r.qtd! * r.preco! * (1 + (r.bdi || 0)) * fx!;
+    out.liq = r.qtd! * r.preco! * fx!;
+    out.base = out.liq * (1 + (r.bdi || 0));
     const aliq = p.aliquotas[regime] ?? 0;
     out.parc = out.base / (1 - aliq);
     out.trib = out.parc - out.base;
@@ -60,13 +61,13 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
   return msgs.join('\n') || 'Verifique os dados da linha.';
 }
 
-export interface Totais { ger: number; parc: number; inc: number; err: number; tit: number; ok: number }
+export interface Totais { ger: number; parc: number; liq: number; inc: number; err: number; tit: number; ok: number }
 
 export function totais(itens: Item[], p: Parametros, cols?: Set<string> | null): Totais {
-  const t: Totais = { ger: 0, parc: 0, inc: 0, err: 0, tit: 0, ok: 0 };
+  const t: Totais = { ger: 0, parc: 0, liq: 0, inc: 0, err: 0, tit: 0, ok: 0 };
   for (const it of itens) {
     const c = calcular(it, p, cols);
-    t.ger += c.ger || 0; t.parc += c.parc || 0;
+    t.ger += c.ger || 0; t.parc += c.parc || 0; t.liq += c.liq || 0;
     if (c.chk === 'INCOMPLETO') t.inc++; else if (c.chk === 'ERRO') t.err++; else if (c.chk === 'TITULO') t.tit++; else t.ok++;
   }
   return t;

@@ -3,6 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 export const nf = (n: number, d = 2) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 export const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const brlCurto = (n: number) => (Math.abs(n) >= 1e6 ? 'R$ ' + nf(n / 1e6, 2) + ' mi' : brl(n));
+export const usdCurto = (n: number) =>
+  Math.abs(n) >= 1e6 ? 'US$ ' + nf(n / 1e6, 2) + ' mi' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'USD' });
 export const dataHora = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 /** Iniciais para o avatar: "Engenharia Teste Ltda" -> "ET". */
