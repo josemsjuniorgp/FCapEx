@@ -6,7 +6,7 @@ import {
   aplicarBdiEmLote, atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
-import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
+import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, niveisTitulos, totais } from '../dominio/calculo';
 import { colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
@@ -70,6 +70,7 @@ export function EditorPx() {
   }, [itens, parametros, modelo]);
   const t = useMemo(() => (parametros ? totais(itens, parametros, modelo) : null), [itens, parametros, modelo]);
   const grupos = useMemo(() => gruposPorTitulo(itens), [itens]);
+  const niveis = useMemo(() => niveisTitulos(itens), [itens]);
   const titulos = itens.filter(i => i.titulo);
   /** O título e seus subníveis pela numeração do Item PQ (1.1 inclui 1.1.1, 1.1.1.1…). */
   const ramo = useCallback((id: string) => {
@@ -332,7 +333,7 @@ export function EditorPx() {
               {visiveis.map(it => {
                 const r = res.get(it.id)!;
                 return (
-                  <tr key={it.id} className={(it.titulo ? 'title ' : '') + (sel === it.id ? 'sel' : '')} onClick={() => setSel(it.id)}>
+                  <tr key={it.id} className={(it.titulo ? `title nv${niveis.get(it.id) ?? 1} ` : '') + (sel === it.id ? 'sel' : '')} onClick={() => setSel(it.id)}>
                     {colunas.map(c => (
                       <Celula key={c.k} c={c} it={it} r={r} editavel={editavel} fretes={parametros.fretes} bdis={parametros.bdis}
                         moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}

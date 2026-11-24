@@ -4,7 +4,7 @@
  * Os valores são os mesmos calculados pelo sistema (não são fórmulas).
  */
 import type ExcelJS from 'exceljs';
-import { bdiDe, bdiFinal, calcular, gruposPorTitulo, totais } from './calculo';
+import { bdiDe, bdiFinal, calcular, CORES_TITULO, gruposPorTitulo, niveisTitulos, totais } from './calculo';
 import { OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
 import type { Bdi, Item, Parametros, Resultado } from './tipos';
 
@@ -182,6 +182,7 @@ function abaPx(
   // --- itens
   const grupos = gruposPorTitulo(d.itens);
   const ramo = ramos(d.itens);
+  const niveis = niveisTitulos(d.itens);
   const somaRamo = (id: string) => {
     const r = ramo(id);
     return d.itens.filter(i => !i.titulo && r.has(grupos.get(i.id) ?? '')).reduce((s, i) => s + (res.get(i.id)?.ger || 0), 0);
@@ -196,13 +197,15 @@ function abaPx(
       cel.border = borda();
       cel.alignment = { vertical: 'middle', horizontal: c.num || c.t === 'calc' || c.t === 'tax' ? 'right' : c.k === 'seq' ? 'center' : 'left', indent: c.num || c.t === 'calc' || c.t === 'tax' || c.k === 'seq' ? 0 : 1 };
       if (it.titulo) {
-        cel.fill = fill(COR.titulo);
-        cel.font = { name: FONTE, size: 10, bold: true, color: { argb: COR.tinta } };
+        const cor = CORES_TITULO[(niveis.get(it.id) ?? 1) - 1];
+        const letra = 'FF' + cor.letra;
+        cel.fill = fill('FF' + cor.fundo);
+        cel.font = { name: FONTE, size: 10, bold: true, color: { argb: letra } };
         if (c.k === 'seq') cel.value = it.seq;
         else if (c.k === 'item') cel.value = it.item;
         else if (c.k === 'desc') cel.value = it.desc;
-        else if (c.k === 'ger') { cel.value = somaRamo(it.id); cel.numFmt = FMT_BRL; cel.font = { name: FONTE, size: 10, bold: true, italic: true, color: { argb: COR.acentoEscuro } }; }
-        else if (c.k === 'chk') { cel.value = 'Subtotal do grupo'; cel.font = { name: FONTE, size: 8.5, italic: true, color: { argb: COR.cinza } }; }
+        else if (c.k === 'ger') { cel.value = somaRamo(it.id); cel.numFmt = FMT_BRL; cel.font = { name: FONTE, size: 10, bold: true, italic: true, color: { argb: letra } }; }
+        else if (c.k === 'chk') { cel.value = 'Subtotal do grupo'; cel.font = { name: FONTE, size: 8.5, italic: true, color: { argb: letra } }; }
         return;
       }
       if (par) cel.fill = fill(COR.zebra);

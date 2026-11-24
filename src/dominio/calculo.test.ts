@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, totais, tributoSeAplica } from './calculo';
+import { bdiFinal, calcular, detalheCheck, niveisTitulos, gruposPorTitulo, totais, tributoSeAplica } from './calculo';
 import { itemVazio } from './pq';
 import type { Bdi, Item, Parametros, Tributo } from './tipos';
 
@@ -279,5 +279,17 @@ describe('BDI cadastrado', () => {
     const it1 = item({ bdi: 'civil' });
     expect(totais([it1, item({ id: 'y' })], PB).bdiv).toBeCloseTo(1000 * bdiFinal(civil), 8);
     expect(detalheCheck(it1, calcular(it1, PB), PB)).toContain('BDI: BDI Obras Civis');
+  });
+});
+
+describe('nível dos títulos', () => {
+  const t = (id: string, num: string): Item => ({ ...itemVazio(id, 1), titulo: true, item: num });
+  it('pela numeração: o nível mais alto é o 1º; do 5º para baixo fica no 4º', () => {
+    const n = niveisTitulos([t('a', '1'), t('b', '1.1'), t('c', '1.1.1'), t('d', '1.1.1.1'), t('e', '1.1.1.1.1'), { ...item({}), id: 'x' }]);
+    expect([...n.entries()]).toEqual([['a', 1], ['b', 2], ['c', 3], ['d', 4], ['e', 4]]);
+  });
+  it('PQ que começa em 1.1: 1.1 é o 1º título; sem número = 1º', () => {
+    const n = niveisTitulos([t('a', '1.1'), t('b', '1.1.2.'), t('c', '')]);
+    expect([n.get('a'), n.get('b'), n.get('c')]).toEqual([1, 2, 1]);
   });
 });

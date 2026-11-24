@@ -136,3 +136,26 @@ export function gruposPorTitulo(itens: Item[]): Map<string, string | null> {
   for (const it of itens) { if (it.titulo) atual = it.id; g.set(it.id, atual); }
   return g;
 }
+
+/** Cores das linhas de título por nível (1º = laranja escuro … 4º = laranja bem claro). Hex sem "#". */
+export const CORES_TITULO = [
+  { fundo: '9A3412', letra: 'FFFFFF' },
+  { fundo: 'C2570C', letra: 'FFFFFF' },
+  { fundo: 'F6B27A', letra: '431407' },
+  { fundo: 'FCE1C7', letra: '431407' },
+] as const;
+
+/**
+ * Nível de cada título (1 a 4) pela numeração do Item PQ: o nível mais alto da PX é o 1º título,
+ * cada ponto a mais desce um nível; do 5º para baixo fica no 4º. Título sem número = 1º.
+ */
+export function niveisTitulos(itens: Item[]): Map<string, number> {
+  const partes = (s: string) => s.trim().replace(/\.+$/, '').split('.').filter(Boolean).length;
+  const titulos = itens.filter(i => i.titulo);
+  const comNumero = titulos.map(t => partes(t.item)).filter(n => n > 0);
+  const topo = comNumero.length ? Math.min(...comNumero) : 1;
+  return new Map(titulos.map(t => {
+    const n = partes(t.item);
+    return [t.id, n ? Math.min(4, Math.max(1, n - topo + 1)) : 1];
+  }));
+}

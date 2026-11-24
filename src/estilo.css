@@ -418,3 +418,14 @@ table.grid thead tr.h th{background:var(--cab-h);color:var(--cab-h-ink);text-ali
 table.grid thead tr.h th .fx{color:var(--cab-g)}
 table.grid thead tr.h th:hover .redim::after{background:var(--cab-h-sep)}
 table.grid thead tr.h th .redim:hover::after,table.grid thead tr.h th .redim.manual::after{background:var(--cab-g)}
+
+/* ---------- linhas de título por nível: 1º laranja escuro … 4º laranja bem claro (mesmas cores no Excel) ---------- */
+table.grid tr.title.nv1 td{background:#9a3412;color:#fff}
+table.grid tr.title.nv2 td{background:#c2570c;color:#fff}
+table.grid tr.title.nv3 td{background:#f6b27a;color:#431407}
+table.grid tr.title.nv4 td{background:#fce1c7;color:#431407}
+table.grid tr.title td{border-right-color:rgba(0,0,0,.08)}
+table.grid tr.title td.in-c textarea{color:inherit;font-weight:600}
+table.grid tr.title td.in-c textarea:focus{color:var(--ink)}
+table.grid tr.title.sel td{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
+table.grid tr.title td.rowdel .btn{color:var(--ink)}
