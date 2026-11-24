@@ -1,6 +1,6 @@
 /** Acesso ao banco. Converte entre as colunas do banco (português) e o Item do domínio. */
 import { supabase } from './supabase';
-import type { Item, Parametros, Regime } from '../dominio/tipos';
+import type { Item, Parametros, Tributo } from '../dominio/tipos';
 
 export type Papel = 'admin' | 'orcamentista' | 'revisor' | 'leitura';
 export const NOME_PAPEL: Record<Papel, string> = {
@@ -32,6 +32,7 @@ export function traduzErro(msg: string): string {
   if (/row-level security|permission denied/i.test(msg)) return 'Você não tem permissão para esta ação.';
   if (/pxs_empresa_id_codigo_key/i.test(msg)) return 'Já existe uma PX com esse código.';
   if (/pxs_codigo_tamanho/i.test(msg)) return 'O código da PX precisa ter entre 1 e 250 caracteres.';
+  if (/tributos_empresa_id_nome_key/i.test(msg)) return 'Já existe um tributo com esse nome.';
   if (/duplicate key|unique/i.test(msg)) return 'Já existe um registro com esse nome.';
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
   return msg;
@@ -69,34 +70,38 @@ export const removerMembro = async (emp: string, uid: string) =>
   ok(await supabase.from('membros').delete().eq('empresa_id', emp).eq('usuario_id', uid));
 
 // ------------------------------------------------------------------ parâmetros
+interface TributoDb { id: string; nome: string; aliquota: number; aplica_fornecimento: boolean; aplica_servico: boolean; aplica_nacional: boolean; aplica_importado: boolean }
+const tributoDoBanco = (t: TributoDb): Tributo => ({
+  id: t.id, nome: t.nome, aliquota: Number(t.aliquota),
+  fornecimento: t.aplica_fornecimento, servico: t.aplica_servico, nacional: t.aplica_nacional, importado: t.aplica_importado,
+});
+
 export async function carregarParametros(emp: string): Promise<{ p: Parametros; moedas: Moeda[] }> {
-  const [m, a, pk] = await Promise.all([
+  const [m, tr] = await Promise.all([
     supabase.from('moedas').select('codigo, nome, simbolo, cambio_brl').eq('empresa_id', emp).order('codigo'),
-    supabase.from('aliquotas').select('regime, aliquota').eq('empresa_id', emp),
-    supabase.from('pacotes_servico').select('codigo').eq('empresa_id', emp).order('codigo'),
+    supabase.from('tributos').select('id, nome, aliquota, aplica_fornecimento, aplica_servico, aplica_nacional, aplica_importado')
+      .eq('empresa_id', emp).order('ordem').order('criado_em'),
   ]);
   const moedas = (ok(m) as Moeda[]).map(x => ({ ...x, cambio_brl: x.cambio_brl === null ? null : Number(x.cambio_brl) }));
-  const aliquotas = { NF: 0, IF: 0, NS: 0, IS: 0 } as Record<Regime, number>;
-  for (const r of ok(a) as { regime: Regime; aliquota: number }[]) aliquotas[r.regime] = Number(r.aliquota);
   return {
     moedas,
-    p: {
-      cambio: Object.fromEntries(moedas.map(x => [x.codigo, x.cambio_brl])),
-      aliquotas,
-      pacotesServico: (ok(pk) as { codigo: string }[]).map(x => x.codigo),
-    },
+    p: { cambio: Object.fromEntries(moedas.map(x => [x.codigo, x.cambio_brl])), tributos: (ok(tr) as TributoDb[]).map(tributoDoBanco) },
   };
 }
 export const salvarMoeda = async (emp: string, m: Moeda) =>
   ok(await supabase.from('moedas').upsert({ empresa_id: emp, ...m }));
 export const excluirMoeda = async (emp: string, codigo: string) =>
   ok(await supabase.from('moedas').delete().eq('empresa_id', emp).eq('codigo', codigo));
-export const salvarAliquota = async (emp: string, regime: Regime, aliquota: number) =>
-  ok(await supabase.from('aliquotas').upsert({ empresa_id: emp, regime, aliquota }));
-export const adicionarPacote = async (emp: string, codigo: string) =>
-  ok(await supabase.from('pacotes_servico').insert({ empresa_id: emp, codigo }));
-export const excluirPacote = async (emp: string, codigo: string) =>
-  ok(await supabase.from('pacotes_servico').delete().eq('empresa_id', emp).eq('codigo', codigo));
+/** Cria ou altera um tributo da empresa. */
+export async function salvarTributo(emp: string, t: Omit<Tributo, 'id'> & { id?: string }) {
+  const linha = {
+    empresa_id: emp, nome: t.nome.trim(), aliquota: t.aliquota,
+    aplica_fornecimento: t.fornecimento, aplica_servico: t.servico, aplica_nacional: t.nacional, aplica_importado: t.importado,
+  };
+  if (t.id) ok(await supabase.from('tributos').update(linha).eq('id', t.id));
+  else ok(await supabase.from('tributos').insert({ ...linha, ordem: 100 }));
+}
+export const excluirTributo = async (id: string) => ok(await supabase.from('tributos').delete().eq('id', id));
 
 // ------------------------------------------------------------------ clientes, projetos, modelos, PX
 export const listarClientes = async (emp: string) =>
@@ -143,6 +148,7 @@ interface ItemDb {
   area: string; subarea: string; ativo: string; descricao: string; unidade: string;
   quantidade: number | null; provisao: number | null; hh: number | null; pacote: string;
   tipo: string; natureza: string; moeda: string; preco: number | null; bdi: number | null;
+  tributos_ligados: Record<string, boolean> | null;
 }
 export interface ItemPos extends Item { posicao: number }
 
@@ -151,18 +157,19 @@ const doBanco = (r: ItemDb): ItemPos => ({
   id: r.id, posicao: r.posicao, seq: r.seq, titulo: r.titulo, pqdoc: r.pq_doc, item: r.pq_item,
   area: r.area, subarea: r.subarea, ativo: r.ativo, desc: r.descricao, un: r.unidade,
   qtd: num(r.quantidade), prov: num(r.provisao), hh: num(r.hh), pacote: r.pacote, tipo: r.tipo,
-  orig: r.natureza, moeda: r.moeda, preco: num(r.preco), bdi: num(r.bdi),
+  orig: r.natureza, moeda: r.moeda, preco: num(r.preco), bdi: num(r.bdi), tribLigados: r.tributos_ligados ?? {},
 });
 const MAPA_DB: Record<string, keyof ItemDb> = {
   seq: 'seq', titulo: 'titulo', pqdoc: 'pq_doc', item: 'pq_item', area: 'area', subarea: 'subarea', ativo: 'ativo',
   desc: 'descricao', un: 'unidade', qtd: 'quantidade', prov: 'provisao', hh: 'hh', pacote: 'pacote', tipo: 'tipo',
-  orig: 'natureza', moeda: 'moeda', preco: 'preco', bdi: 'bdi', posicao: 'posicao',
+  orig: 'natureza', moeda: 'moeda', preco: 'preco', bdi: 'bdi', posicao: 'posicao', tribLigados: 'tributos_ligados',
 };
 export function paraBanco(campos: Partial<ItemPos>): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(campos)) if (MAPA_DB[k]) o[MAPA_DB[k]] = v ?? (typeof v === 'string' ? '' : null);
   for (const k of ['pq_doc', 'pq_item', 'area', 'subarea', 'ativo', 'descricao', 'unidade', 'pacote', 'tipo', 'natureza', 'moeda'])
     if (k in o && (o[k] === null || o[k] === undefined)) o[k] = '';
+  if ('tributos_ligados' in o && !o.tributos_ligados) o.tributos_ligados = {};
   return o;
 }
 

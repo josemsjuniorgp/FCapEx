@@ -8,8 +8,11 @@ import type { Item, Parametros } from './tipos';
 
 const P: Parametros = {
   cambio: { BRL: 1, USD: 5.2, EUR: null },
-  aliquotas: { NF: 0.1865, IF: 0.312, NS: 0.1365, IS: 0.3315 },
-  pacotesServico: ['SERV-CIV-1'],
+  tributos: [
+    { id: 'pis', nome: 'PIS', aliquota: 0.0165, fornecimento: true, servico: true, nacional: true, importado: true },
+    { id: 'cofins', nome: 'COFINS', aliquota: 0.076, fornecimento: true, servico: true, nacional: true, importado: true },
+    { id: 'iss', nome: 'ISS', aliquota: 0.05, fornecimento: false, servico: true, nacional: true, importado: true },
+  ],
 };
 const novo = (seq: number, o: Partial<Item>): Item => ({ ...itemVazio('i' + seq, seq), ...o });
 const ITENS: Item[] = [
@@ -126,7 +129,7 @@ describe('exportação para Excel', async () => {
 
   it('parâmetros usados no cálculo', () => {
     const t = texto(wb.getWorksheet('Parâmetros')!);
-    for (const v of ['MOEDAS E CÂMBIO', 'USD', '5.2', 'sem câmbio', 'ALÍQUOTAS POR REGIME', 'Nacional · fornecimento', 'SERV-CIV-1']) expect(t).toContain(v);
+    for (const v of ['MOEDAS E CÂMBIO', 'USD', '5.2', 'sem câmbio', 'TRIBUTOS', 'COFINS', 'serviço · nacional e importado']) expect(t).toContain(v);
   });
 
   it('respeita as colunas da PX', async () => {
@@ -139,6 +142,24 @@ describe('exportação para Excel', async () => {
   it('PX sem itens também exporta', async () => {
     const w = (await abrir({ ...DADOS, itens: [] })).getWorksheet('PX')!;
     expect(texto(w)).toContain('Esta PX ainda não tem itens.');
+  });
+
+  it('colunas de tributo: valor por linha, "desligado" e total por tributo', async () => {
+    const itens = ITENS.map(i => (i.id === 'i4' ? { ...i, tribLigados: { iss: false } } : i));
+    const colunasPx = [...COLUNAS.map(c => c.k), 'tx:iss', 'tx:pis'];
+    const w = (await abrir({ ...DADOS, itens, px: { ...DADOS.px, colunas: colunasPx } })).getWorksheet('PX')!;
+    const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
+    const iIss = cab.indexOf('ISS (R$)') + 1, iPis = cab.indexOf('PIS (R$)') + 1, iTrib = cab.indexOf('Tributos (R$)') + 1;
+    expect(iPis).toBeGreaterThan(0); expect(iIss).toBeGreaterThan(iPis);       // na ordem dos tributos, antes do total
+    expect(iTrib).toBe(iIss + 1);
+    const cols = new Set(colunasPx);
+    const r2 = calcular(itens[1], P, cols);
+    expect(w.getCell(16, iIss).value).toBeCloseTo(r2.tribs.iss, 6);        // linha 1.1.1 (serviço): ISS ligado
+    expect(w.getCell(18, iIss).value).toBe('desligado');                     // linha 1.1.2.1: ISS desligado à mão
+    const tot = totais(itens, P, cols);
+    const linhaTotal = Number(achar(w, 'TOTAL')!.row);
+    expect(w.getCell(linhaTotal, iIss).value).toBeCloseTo(tot.porTributo.iss, 6);
+    expect(w.getCell(linhaTotal, iPis).value).toBeCloseTo(tot.porTributo.pis, 6);
   });
 
   it('nome do arquivo', () => {

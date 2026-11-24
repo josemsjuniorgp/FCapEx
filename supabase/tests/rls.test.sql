@@ -36,7 +36,8 @@ select pg_temp.como('00000000-0000-0000-0000-00000000000a');
 select pg_temp.confere((select count(*) from public.empresas) = 1, 'Alice vê só 1 empresa');
 select pg_temp.confere((select count(*) from public.clientes) = 0, 'Alice não vê clientes da B');
 select pg_temp.confere((select count(*) from public.moedas) = 3, 'parâmetros padrão: 3 moedas');
-select pg_temp.confere((select count(*) from public.pacotes_servico) = 3, 'parâmetros padrão: 3 pacotes');
+select pg_temp.confere((select count(*) from public.tributos) = 7, 'tributos padrão: 7');
+select pg_temp.confere((select aliquota from public.tributos where nome = 'COFINS') = 0.076, 'COFINS padrão 7,6%');
 select pg_temp.confere((select string_agg(nome, ',') from public.modelos where empresa_id is null) = 'PX Padrão', 'só o modelo PX Padrão do sistema');
 
 -- 3) Alice não escreve na empresa B
@@ -176,4 +177,28 @@ insert into ids values ('pxl', public.criar_px((select v from ids where k='projA
 select pg_temp.confere((select codigo from public.pxs where id = (select v from ids where k='pxl')) = 'ORÇ 2026/15 – rev. cliente', 'código livre com espaços e símbolos');
 select pg_temp.deve_falhar(format($q$select public.criar_px(%L, 'x', 'm', array['seq'], '', '{}'::jsonb, %L)$q$, (select v from ids where k='projA'), repeat('A', 251)), 'código com mais de 250 caracteres');
 select pg_temp.deve_falhar(format($q$update public.pxs set codigo = '' where id = %L$q$, (select v from ids where k='pxl')), 'código vazio na edição');
+reset role;
+
+-- 17) Tributos detalhados: isolamento, só admin altera, revisão copia ligados/desligados
+select pg_temp.como('00000000-0000-0000-0000-00000000000a');
+insert into public.tributos (empresa_id, nome, aliquota) select v, 'Taxa municipal X', 0.02 from ids where k='A';
+select pg_temp.confere((select count(*) from public.tributos) = 8, 'admin cria tributo personalizado');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+select pg_temp.deve_falhar(format($q$insert into public.tributos (empresa_id, nome, aliquota) values (%L, 'y', 0.1)$q$, (select v from ids where k='A')), 'orçamentista criar tributo');
+update public.tributos set aliquota = 0.5 where nome = 'PIS';
+reset role;
+select pg_temp.confere((select aliquota from public.tributos where nome = 'PIS' and empresa_id = (select v from ids where k='A')) = 0.0165, 'orçamentista não altera alíquota');
+insert into auth.users values ('00000000-0000-0000-0000-0000000000ff', 'zed@x');
+select pg_temp.como('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.confere((select count(*) from public.tributos) = 0, 'estranho não vê tributos');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+insert into ids values ('pxt', public.criar_px((select v from ids where k='projA'), 'Tributos', 'PX Padrão', array['seq'], '', '{}'::jsonb, 'PX-TRIB-01'));
+insert into ids select 'revt', id from public.revisoes where px_id = (select v from ids where k='pxt');
+insert into public.itens (empresa_id, revisao_id, posicao, seq, descricao, tributos_ligados)
+  select (select v from ids where k='A'), (select v from ids where k='revt'), 1, 1, 'Com ISS desligado', '{"abc": false}'::jsonb;
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select tributos_ligados ->> 'abc' from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null) = 'false', 'revisão nova copia tributos ligados/desligados');
 reset role;

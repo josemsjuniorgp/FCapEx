@@ -217,12 +217,12 @@ function converter(cel: Celula | undefined, destino: string): string | number | 
 
 export const itemVazio = (id: string, seq: number): Item => ({
   id, seq, titulo: false, pqdoc: '', item: '', area: '', subarea: '', ativo: '', desc: '', un: '',
-  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null,
+  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null, tribLigados: {},
 });
 
 export interface OpcoesImportacao {
   incluirTitulos: boolean;
-  numeroPq: string;       // vai para a coluna Nº da PQ de todos os itens (menos títulos)
+  numeroPq: string;       // vai para a coluna Documento de Origem de todos os itens (menos títulos)
   seqInicial: number;     // próximo Nº da PX
   novoId: () => string;
 }

@@ -7,7 +7,7 @@ import {
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { calcular, detalheCheck, gruposPorTitulo, totais } from '../dominio/calculo';
-import { COLUNAS, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
+import { colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
 import type { Resultado } from '../dominio/tipos';
@@ -57,7 +57,8 @@ export function EditorPx() {
   useEffect(() => { carregar(); }, [carregar]);
 
   const modelo = useMemo(() => new Set(px?.colunas ?? []), [px]);
-  const colunas = COLUNAS.filter(c => c.k === 'seq' || (modelo.has(c.k) && !ocultas.has(c.k)));
+  const todas = useMemo(() => colunasCompletas(parametros?.tributos ?? []), [parametros]);
+  const colunas = todas.filter(c => c.k === 'seq' || (modelo.has(c.k) && !ocultas.has(c.k)));
   const res = useMemo(() => {
     const m = new Map<string, Resultado>();
     if (parametros) for (const it of itens) m.set(it.id, calcular(it, parametros, modelo));
@@ -119,7 +120,7 @@ export function EditorPx() {
   /** Insere ou exclui uma coluna desta PX (para todos). Os valores dos itens ficam guardados. */
   async function mudarColuna(k: string, incluir: boolean) {
     if (!px) return;
-    const nova = COLUNAS.map(c => c.k).filter(c => (c === k ? incluir : modelo.has(c)) || OBRIGATORIAS.includes(c));
+    const nova = todas.map(c => c.k).filter(c => (c === k ? incluir : modelo.has(c)) || OBRIGATORIAS.includes(c));
     const antes = px;
     setPx({ ...px, colunas: nova });
     if (!(await acao(() => atualizarPx(px.id, { colunas: nova }), incluir ? 'Coluna inserida.' : 'Coluna excluída.'))) setPx(antes);
@@ -259,8 +260,8 @@ export function EditorPx() {
               <tr className="h">
                 {colunas.map(c => (
                   <th key={c.k} className={c.k === 'seq' ? 'sticky c1' : ''} style={c.w ? { minWidth: c.w } : undefined}
-                    title={c.t === 'calc' && c.f ? 'Fórmula: ' + c.f : ''}>
-                    {c.h}{c.t === 'calc' && <span className="fx">fx</span>}
+                    title={(c.t === 'calc' || c.t === 'tax') && c.f ? 'Fórmula: ' + c.f : ''}>
+                    {c.h}{(c.t === 'calc' || c.t === 'tax') && <span className="fx">fx</span>}
                   </th>
                 ))}
                 {editavel && <th />}
@@ -276,7 +277,7 @@ export function EditorPx() {
                         moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}
                         simbolo={moedas.find(m => m.codigo === it.moeda)?.simbolo ?? ''}
                         dica={c.k === 'chk' ? detalheCheck(it, r, parametros, modelo) : undefined}
-                        onSalvar={v => salvarCampo(it.id, c.k, v)} />
+                        onSalvar={v => salvarCampo(it.id, c.t === 'tax' ? 'tribLigados' : c.k, v)} />
                     ))}
                     {editavel && (
                       <td className="rowdel">
@@ -305,9 +306,9 @@ export function EditorPx() {
                 <>
                   <h3>Colunas desta PX</h3>
                   <span className="note">Inserir ou excluir colunas vale para todos que abrem esta PX. Excluir não apaga os valores: ao inserir de novo, eles voltam.</span>
-                  {[...new Set(COLUNAS.map(c => c.g))].map(g => (
+                  {[...new Set(todas.map(c => c.g))].map(g => (
                     <div className="group-box" key={'px-' + g}><strong>{g}</strong>
-                      {COLUNAS.filter(c => c.g === g).map(c => {
+                      {todas.filter(c => c.g === g).map(c => {
                         const fixa = OBRIGATORIAS.includes(c.k);
                         return (
                           <label key={c.k}>
@@ -322,9 +323,9 @@ export function EditorPx() {
                 </>
               )}
               <span className="note">Ocultar uma coluna só muda a sua visualização, não a PX.</span>
-              {[...new Set(COLUNAS.filter(c => modelo.has(c.k)).map(c => c.g))].map(g => (
+              {[...new Set(todas.filter(c => modelo.has(c.k)).map(c => c.g))].map(g => (
                 <div className="group-box" key={g}><strong>{g}</strong>
-                  {COLUNAS.filter(c => c.g === g && modelo.has(c.k)).map(c => (
+                  {todas.filter(c => c.g === g && modelo.has(c.k)).map(c => (
                     <label key={c.k}><input type="checkbox" disabled={c.lock} checked={!ocultas.has(c.k)} onChange={e => ocultar(c.k, !e.target.checked)} />{c.h}</label>
                   ))}
                 </div>
@@ -373,6 +374,23 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
     }
     return <td />;
   }
+  if (c.t === 'tax') {
+    const id = idDoTributo(c.k)!;
+    const ligado = !!r.ligados[id];
+    const manual = it.tribLigados?.[id] !== undefined;
+    const v = r.tribs[id];
+    const dicaTrib = `${ligado ? 'Ligado' : 'Desligado'} ${manual ? 'manualmente nesta linha' : 'pela regra do tributo'}`;
+    return (
+      <td className={'calc trib-cel' + (ligado ? '' : ' off')} title={dicaTrib}>
+        <label className="trib-lig">
+          <input type="checkbox" checked={ligado} disabled={!editavel} aria-label={`${c.h.replace(' (R$)', '')} ligado nesta linha`}
+            onChange={e => onSalvar({ ...(it.tribLigados ?? {}), [id]: e.target.checked })} onClick={e => e.stopPropagation()} />
+          {manual && <span className="trib-manual" aria-hidden="true">•</span>}
+        </label>
+        <span>{ligado ? (v === undefined ? '—' : nf(v, 2)) : 'desligado'}</span>
+      </td>
+    );
+  }
   if (c.t === 'calc') {
     if (c.k === 'chk') {
       const [cls, txt] = ROTULO_CHK[r.chk];
@@ -381,7 +399,6 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
     const v = r[c.k as 'base' | 'trib' | 'parc' | 'ger'];
     return (
       <td className="calc" title={c.f}>
-        {c.k === 'trib' && r.pacote && <span className="tag" title="Item de pacote de serviço: tributado como serviço nacional">pacote</span>}
         {v === null ? '—' : nf(v, 2)}
       </td>
     );

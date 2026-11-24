@@ -1,26 +1,102 @@
 import { describe, expect, it } from 'vitest';
-import { calcular, detalheCheck, gruposPorTitulo, totais } from './calculo';
+import { calcular, detalheCheck, gruposPorTitulo, totais, tributoSeAplica } from './calculo';
 import { itemVazio } from './pq';
-import type { Item, Parametros } from './tipos';
+import type { Item, Parametros, Tributo } from './tipos';
 
-const P: Parametros = {
-  cambio: { BRL: 1, USD: 5.2, EUR: null },
-  aliquotas: { NF: 0.1865, IF: 0.312, NS: 0.1365, IS: 0.3315 },
-  pacotesServico: ['SERV-CIV-1', 'SERV-MEC-1', 'TUK-ELE-2'],
-};
+const T = (id: string, aliquota: number, o: Partial<Tributo> = {}): Tributo =>
+  ({ id, nome: id.toUpperCase(), aliquota, fornecimento: true, servico: true, nacional: true, importado: true, ...o });
+// Tributos padrão de uma empresa nova
+const TRIB: Tributo[] = [
+  T('ii', 0.10, { servico: false, nacional: false }),
+  T('ipi', 0.05, { servico: false }),
+  T('pis', 0.0165),
+  T('cofins', 0.076),
+  T('icms', 0.18, { servico: false }),
+  T('iss', 0.05, { fornecimento: false }),
+  T('irrf', 0.15, { fornecimento: false, nacional: false }),
+];
+const P: Parametros = { cambio: { BRL: 1, USD: 5.2, EUR: null }, tributos: TRIB };
 const item = (o: Partial<Item>): Item => ({
   ...itemVazio('x', 1), desc: 'Item', qtd: 10, preco: 100, pacote: 'P-1', tipo: 'C', orig: 'N', moeda: 'BRL', ...o,
 });
 
+describe('regra de aplicação dos tributos', () => {
+  it('fornecimento nacional: IPI, PIS, COFINS, ICMS', () => {
+    expect(TRIB.filter(t => tributoSeAplica(t, 'F', 'N')).map(t => t.id)).toEqual(['ipi', 'pis', 'cofins', 'icms']);
+  });
+  it('fornecimento importado: II, IPI, PIS, COFINS, ICMS', () => {
+    expect(TRIB.filter(t => tributoSeAplica(t, 'F', 'I')).map(t => t.id)).toEqual(['ii', 'ipi', 'pis', 'cofins', 'icms']);
+  });
+  it('serviço nacional (C, S, T, M): PIS, COFINS, ISS', () => {
+    for (const tipo of ['C', 'S', 'T', 'M']) expect(TRIB.filter(t => tributoSeAplica(t, tipo, 'N')).map(t => t.id)).toEqual(['pis', 'cofins', 'iss']);
+  });
+  it('serviço importado: PIS, COFINS, ISS, IRRF', () => {
+    expect(TRIB.filter(t => tributoSeAplica(t, 'S', 'I')).map(t => t.id)).toEqual(['pis', 'cofins', 'iss', 'irrf']);
+  });
+});
+
 describe('calcular', () => {
-  it('serviço nacional com BDI e provisão', () => {
+  it('serviço nacional com BDI e provisão: tributos por dentro', () => {
     const r = calcular(item({ bdi: 0.25, prov: 0.1 }), P);
+    const aliq = 0.0165 + 0.076 + 0.05;
     expect(r.chk).toBe('OK');
-    expect(r.regime).toBe('NS');
+    expect(r.aliquota).toBeCloseTo(aliq, 10);
+    expect(r.liq).toBeCloseTo(1000, 6);
     expect(r.base).toBeCloseTo(1250, 6);
-    expect(r.parc).toBeCloseTo(1250 / (1 - 0.1365), 6);
+    expect(r.parc).toBeCloseTo(1250 / (1 - aliq), 6);
     expect(r.trib).toBeCloseTo(r.parc! - 1250, 6);
+    expect(r.tribs.iss).toBeCloseTo(r.parc! * 0.05, 6);
+    expect(r.tribs.pis + r.tribs.cofins + r.tribs.iss).toBeCloseTo(r.trib!, 6);
     expect(r.ger).toBeCloseTo(r.parc! * 1.1, 6);
+    expect(r.tribs.icms).toBeUndefined();
+  });
+
+  it('fornecimento importado em dólar converte pelo câmbio e usa os tributos de importação', () => {
+    const r = calcular(item({ tipo: 'F', orig: 'I', moeda: 'USD' }), P);
+    const aliq = 0.10 + 0.05 + 0.0165 + 0.076 + 0.18;
+    expect(r.base).toBeCloseTo(10 * 100 * 5.2, 6);
+    expect(r.parc).toBeCloseTo(5200 / (1 - aliq), 6);
+    expect(Object.keys(r.tribs).sort()).toEqual(['cofins', 'icms', 'ii', 'ipi', 'pis']);
+  });
+
+  it('desligar um tributo na linha tira ele do cálculo', () => {
+    const r = calcular(item({ tribLigados: { iss: false } }), P);
+    expect(r.ligados.iss).toBe(false);
+    expect(r.tribs.iss).toBeUndefined();
+    expect(r.parc).toBeCloseTo(1000 / (1 - 0.0165 - 0.076), 6);
+  });
+
+  it('ligar na linha um tributo que a regra não aplica', () => {
+    const r = calcular(item({ tribLigados: { icms: true } }), P);
+    expect(r.ligados.icms).toBe(true);
+    expect(r.tribs.icms).toBeCloseTo(r.parc! * 0.18, 6);
+  });
+
+  it('tributo personalizado da empresa entra no cálculo', () => {
+    const p2 = { ...P, tributos: [...TRIB, T('taxa', 0.02, { fornecimento: false })] };
+    const r = calcular(item({}), p2);
+    expect(r.tribs.taxa).toBeCloseTo(r.parc! * 0.02, 6);
+    expect(r.aliquota).toBeCloseTo(0.0165 + 0.076 + 0.05 + 0.02, 10);
+  });
+
+  it('sem tributos ligados, parcial = base', () => {
+    const r = calcular(item({}), { ...P, tributos: [] });
+    expect(r.trib).toBeCloseTo(0, 10);
+    expect(r.parc).toBeCloseTo(r.base!, 10);
+  });
+
+  it('pacote é só texto: não influencia o cálculo e não é obrigatório', () => {
+    const a = calcular(item({ pacote: 'SERV-CIV-1', tipo: 'F' }), P);
+    const b = calcular(item({ pacote: '', tipo: 'F' }), P);
+    expect(b.chk).toBe('OK');
+    expect(a.ger).toBeCloseTo(b.ger!, 10);
+  });
+
+  it('soma de alíquotas de 100% ou mais é erro', () => {
+    const r = calcular(item({}), { ...P, tributos: [T('a', 0.6), T('b', 0.5)] });
+    expect(r.chk).toBe('ERRO');
+    expect(r.ger).toBeNull();
+    expect(detalheCheck(item({}), r, { ...P, tributos: [T('a', 0.6), T('b', 0.5)] })).toContain('menor que 100%');
   });
 
   it('líquido = quantidade × preço × câmbio, sem BDI, tributos e provisão', () => {
@@ -35,22 +111,6 @@ describe('calcular', () => {
     const r = calcular(item({ moeda: 'GBP' }), { ...P, cambio: { ...P.cambio, GBP: 7 } });
     expect(r.chk).toBe('OK');
     expect(r.liq).toBeCloseTo(7000, 6);
-  });
-
-  it('fornecimento importado em dólar converte pelo câmbio', () => {
-    const r = calcular(item({ tipo: 'F', orig: 'I', moeda: 'USD' }), P);
-    expect(r.regime).toBe('IF');
-    expect(r.base).toBeCloseTo(10 * 100 * 5.2, 6);
-    expect(r.parc).toBeCloseTo(5200 / (1 - 0.312), 6);
-  });
-
-  it('pacote de serviço vale para os 5 tipos e qualquer natureza, ignorando zeros e símbolos', () => {
-    for (const tipo of ['F', 'C', 'S', 'T', 'M']) {
-      const r = calcular(item({ pacote: 'serv civ 001', tipo, orig: 'I' }), P);
-      expect(r.pacote).toBe(true);
-      expect(r.regime).toBe('NS');
-      expect(r.chk).toBe('OK');
-    }
   });
 
   it('campo obrigatório vazio = INCOMPLETO, sem valores calculados', () => {
@@ -78,7 +138,7 @@ describe('calcular', () => {
     const cols = new Set(['seq', 'desc', 'qtd', 'preco', 'ger', 'chk']);
     const r = calcular(item({ tipo: '', orig: '', moeda: '', pacote: '' }), P, cols);
     expect(r.chk).toBe('OK');
-    expect(r.regime).toBe('NF');
+    expect(Object.keys(r.tribs).sort()).toEqual(['cofins', 'icms', 'ipi', 'pis']);
     expect(r.base).toBeCloseTo(1000, 6);
   });
 });
@@ -94,15 +154,22 @@ describe('detalheCheck', () => {
     const it1 = item({ moeda: 'EUR' });
     expect(detalheCheck(it1, calcular(it1, P), P)).toContain('não tem câmbio');
   });
+  it('linha OK lista os tributos ligados', () => {
+    const it1 = item({});
+    expect(detalheCheck(it1, calcular(it1, P), P)).toContain('Tributos ligados: PIS 1,65%, COFINS 7,6%, ISS 5%');
+  });
 });
 
 describe('totais e grupos', () => {
-  it('soma só itens válidos e conta pendências', () => {
+  it('soma só itens válidos, conta pendências e totaliza por tributo', () => {
     const lista = [item({ id: 'a' }), item({ id: 'b', qtd: null }), item({ id: 'c', tipo: 'Z' }), item({ id: 't', titulo: true })];
     const t = totais(lista, P);
+    const r0 = calcular(lista[0], P);
     expect(t).toMatchObject({ ok: 1, inc: 1, err: 1, tit: 1 });
-    expect(t.ger).toBeCloseTo(calcular(lista[0], P).ger!, 6);
-    expect(t.liq).toBeCloseTo(calcular(lista[0], P).liq!, 6);
+    expect(t.ger).toBeCloseTo(r0.ger!, 6);
+    expect(t.liq).toBeCloseTo(r0.liq!, 6);
+    expect(t.porTributo.iss).toBeCloseTo(r0.tribs.iss, 6);
+    expect(t.trib).toBeCloseTo(r0.trib!, 6);
   });
   it('cada item pertence ao título imediatamente acima', () => {
     const lista = [item({ id: 'x0' }), item({ id: 't1', titulo: true }), item({ id: 'a' }), item({ id: 't2', titulo: true }), item({ id: 'b' })];

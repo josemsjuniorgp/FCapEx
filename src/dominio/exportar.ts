@@ -5,8 +5,8 @@
  */
 import type ExcelJS from 'exceljs';
 import { calcular, gruposPorTitulo, totais } from './calculo';
-import { COLUNAS, OPCOES, type Coluna } from './colunas';
-import type { Item, Parametros, Regime, Resultado } from './tipos';
+import { OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
+import type { Item, Parametros, Resultado } from './tipos';
 
 export interface MoedaExportacao { codigo: string; nome: string; simbolo: string; cambio_brl: number | null }
 
@@ -39,9 +39,6 @@ const borda = (argb = COR.linha): Partial<ExcelJS.Borders> => {
 const FMT_BRL = '"R$ "#,##0.00';
 const FMT_USD = '"US$ "#,##0.00';
 const fmtMoeda = (simbolo: string) => `"${simbolo.replace(/"/g, '')} "#,##0.00`;
-const NOME_REGIME: Record<Regime, string> = {
-  NF: 'Nacional · fornecimento', IF: 'Importado · fornecimento', NS: 'Nacional · serviço', IS: 'Importado · serviço',
-};
 const ROT_CHK = { OK: 'OK', INCOMPLETO: 'Incompleto', ERRO: 'Erro de classificação', TITULO: 'Título' } as const;
 
 const LARGURA: Record<string, number> = {
@@ -74,7 +71,7 @@ export async function gerarExcel(d: DadosExportacao): Promise<ArrayBuffer> {
   wb.created = d.geradoEm ?? new Date();
 
   const cols = new Set(d.px.colunas);
-  const colunas = COLUNAS.filter(c => c.k === 'seq' || cols.has(c.k));
+  const colunas = colunasCompletas(d.parametros.tributos).filter(c => c.k === 'seq' || cols.has(c.k));
   const res = new Map<string, Resultado>(d.itens.map(it => [it.id, calcular(it, d.parametros, cols)]));
   const tot = totais(d.itens, d.parametros, cols);
   const usd = d.parametros.cambio.USD ?? null;
@@ -177,7 +174,7 @@ function abaPx(
     h.value = c.h;
     h.font = { name: FONTE, size: 9.5, bold: true, color: { argb: COR.branco } };
     h.fill = fill(COR.acentoEscuro);
-    h.alignment = { horizontal: c.num || c.t === 'calc' || c.k === 'seq' ? 'center' : 'left', vertical: 'middle', wrapText: true, indent: c.num || c.t === 'calc' ? 0 : 1 };
+    h.alignment = { horizontal: c.num || c.t === 'calc' || c.t === 'tax' || c.k === 'seq' ? 'center' : 'left', vertical: 'middle', wrapText: true, indent: c.num || c.t === 'calc' || c.t === 'tax' ? 0 : 1 };
     h.border = borda(COR.acentoEscuro);
   });
   ws.getRow(H1).height = 18; ws.getRow(H2).height = 32;
@@ -197,7 +194,7 @@ function abaPx(
       const cel = row.getCell(i + 1);
       cel.font = { name: FONTE, size: 10, color: { argb: COR.tinta } };
       cel.border = borda();
-      cel.alignment = { vertical: 'middle', horizontal: c.num || c.t === 'calc' ? 'right' : c.k === 'seq' ? 'center' : 'left', indent: c.num || c.t === 'calc' || c.k === 'seq' ? 0 : 1 };
+      cel.alignment = { vertical: 'middle', horizontal: c.num || c.t === 'calc' || c.t === 'tax' ? 'right' : c.k === 'seq' ? 'center' : 'left', indent: c.num || c.t === 'calc' || c.t === 'tax' || c.k === 'seq' ? 0 : 1 };
       if (it.titulo) {
         cel.fill = fill(COR.titulo);
         cel.font = { name: FONTE, size: 10, bold: true, color: { argb: COR.tinta } };
@@ -209,6 +206,13 @@ function abaPx(
         return;
       }
       if (par) cel.fill = fill(COR.zebra);
+      if (c.t === 'tax') {
+        const id = idDoTributo(c.k)!;
+        if (r.ligados[id]) { cel.value = r.tribs[id] ?? null; cel.numFmt = FMT_BRL; }
+        else { cel.value = 'desligado'; cel.font = { name: FONTE, size: 8.5, italic: true, color: { argb: COR.cinza } }; cel.alignment = { horizontal: 'center', vertical: 'middle' }; }
+        cel.fill = fill(par ? 'FFE7ECF0' : COR.calc);
+        return;
+      }
       if (c.t === 'calc') {
         if (c.k === 'chk') {
           const [cor, fundo] = { OK: [COR.ok, COR.okClaro], INCOMPLETO: [COR.aviso, COR.avisoClaro], ERRO: [COR.erro, COR.erroClaro], TITULO: [COR.cinza, COR.titulo] }[r.chk];
@@ -248,6 +252,7 @@ function abaPx(
   const rt = ws.getRow(linha);
   const somas: Record<string, number> = { base: 0, trib: 0, parc: 0, ger: 0 };
   for (const it of d.itens) for (const k of Object.keys(somas)) somas[k] += res.get(it.id)?.[k as 'base'] || 0;
+  for (const c of colunas) { const id = idDoTributo(c.k); if (id) somas[c.k] = tot.porTributo[id] || 0; }
   colunas.forEach((c, i) => {
     const cel = rt.getCell(i + 1);
     cel.fill = fill(COR.total);
@@ -363,7 +368,7 @@ function abaResumo(
 // ------------------------------------------------------------------ aba Parâmetros
 function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string) {
   const ws = wb.addWorksheet('Parâmetros', { views: [{ showGridLines: false }] });
-  [16, 34, 14, 18].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  [18, 40, 12, 26].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
   const t = ws.getCell('A1'); t.value = 'PARÂMETROS USADOS NO CÁLCULO';
   t.font = { name: FONTE, size: 16, bold: true, color: { argb: COR.tinta } };
   const s = ws.getCell('A2'); s.value = `${d.empresa} · exportado em ${quando}`;
@@ -391,12 +396,15 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
   };
   bloco('Moedas e câmbio', ['Código', 'Nome', 'Símbolo', 'Câmbio (R$)'],
     d.moedas.map(m => [m.codigo, m.nome, m.simbolo, m.cambio_brl ?? 'sem câmbio']), [null, null, null, '#,##0.0000']);
-  bloco('Alíquotas por regime', ['Regime', 'Descrição', 'Alíquota'],
-    (Object.keys(NOME_REGIME) as Regime[]).map(r => [r, NOME_REGIME[r], d.parametros.aliquotas[r] ?? 0]), [null, null, '0.00%']);
-  bloco('Pacotes de serviço (tributados como serviço nacional)', ['Pacote'],
-    d.parametros.pacotesServico.length ? d.parametros.pacotesServico.map(p => [p]) : [['(nenhum)']], [null]);
+  const sim = (v: boolean) => (v ? 'sim' : '—');
+  bloco('Tributos', ['Tributo', 'Aplica-se a', 'Alíquota', 'Forn. / Serv. / Nac. / Imp.'],
+    d.parametros.tributos.length
+      ? d.parametros.tributos.map(t => [t.nome,
+          [t.fornecimento && 'fornecimento', t.servico && 'serviço'].filter(Boolean).join(' e ') + ' · ' + [t.nacional && 'nacional', t.importado && 'importado'].filter(Boolean).join(' e '),
+          t.aliquota, [t.fornecimento, t.servico, t.nacional, t.importado].map(sim).join(' / ')])
+      : [['(nenhum)', '', null, '']], [null, null, '0.00%', null]);
   const n = ws.getCell(linha, 1);
-  n.value = 'Tributos = total ÷ (1 − alíquota) − base. Total geral = (base + tributos) × (1 + provisão). Base = quantidade × preço × (1 + BDI) × câmbio.';
+  n.value = 'Base = quantidade × preço × (1 + BDI) × câmbio. Parcial = base ÷ (1 − soma das alíquotas ligadas na linha). Cada tributo = parcial × sua alíquota. Total geral = parcial × (1 + provisão). Cada linha pode ligar ou desligar tributos.';
   n.font = { name: FONTE, size: 9, italic: true, color: { argb: COR.cinza } };
 }
 

@@ -1,10 +1,9 @@
 import { COLUNAS, PADROES } from './colunas';
-import { chavePacote, vazio } from './normalizacao';
-import type { Item, Parametros, Regime, Resultado } from './tipos';
+import { vazio } from './normalizacao';
+import type { Item, Parametros, Resultado, Tributo } from './tipos';
 
 const SERVICO = ['C', 'S', 'T', 'M'];
-const TIPOS_PACOTE = ['F', 'C', 'S', 'T', 'M'];
-const OBRIG_CALCULO = ['qtd', 'preco', 'pacote', 'moeda', 'orig', 'tipo'] as const;
+const OBRIG_CALCULO = ['qtd', 'preco', 'moeda', 'orig', 'tipo'] as const;
 
 /** Aplica os valores padrão às colunas que não fazem parte do modelo da PX. */
 function comPadroes(item: Item, cols?: Set<string> | null): Item {
@@ -14,41 +13,60 @@ function comPadroes(item: Item, cols?: Set<string> | null): Item {
   return r as unknown as Item;
 }
 
+/** O tributo se aplica a esta linha pela regra (tipo × natureza)? */
+export function tributoSeAplica(t: Tributo, tipo: string, orig: string): boolean {
+  const porTipo = tipo === 'F' ? t.fornecimento : SERVICO.includes(tipo) ? t.servico : false;
+  const porNatureza = orig === 'I' ? t.importado : orig === 'N' ? t.nacional : false;
+  return porTipo && porNatureza;
+}
+
+/** Tributo ligado nesta linha: escolha manual da linha ou, sem escolha, a regra do tributo. */
+export const tributoLigado = (t: Tributo, it: Item, tipo: string, orig: string) =>
+  it.tribLigados?.[t.id] ?? tributoSeAplica(t, tipo, orig);
+
 export function calcular(item: Item, p: Parametros, cols?: Set<string> | null): Resultado {
-  if (item.titulo) return { pacote: false, regime: '', chk: 'TITULO', liq: null, base: null, trib: null, parc: null, ger: null };
+  const vazioRes = { liq: null, base: null, trib: null, parc: null, ger: null, ligados: {}, tribs: {}, aliquota: 0 };
+  if (item.titulo) return { chk: 'TITULO', ...vazioRes };
   const r = comPadroes(item, cols);
   const fx = p.cambio[String(r.moeda).toUpperCase()] ?? undefined;
-  const pacotes = new Set(p.pacotesServico.map(chavePacote));
-  const pacote = pacotes.has(chavePacote(r.pacote)) && TIPOS_PACOTE.includes(r.tipo);
   const isF = r.tipo === 'F', isSvc = SERVICO.includes(r.tipo);
   const valido = (r.orig === 'N' || r.orig === 'I') && (isF || isSvc);
-  const regime = (pacote ? 'NS' : (r.orig === 'I' ? 'I' : 'N') + (isF ? 'F' : 'S')) as Regime;
   const faltando = OBRIG_CALCULO.some(k => vazio(r[k]));
   const semCambio = fx === undefined || fx === null;
+
+  const ligados: Record<string, boolean> = {};
+  let aliquota = 0;
+  for (const t of p.tributos) {
+    const on = tributoLigado(t, item, r.tipo, r.orig);
+    ligados[t.id] = on;
+    if (on) aliquota += t.aliquota;
+  }
+  const aliqInvalida = aliquota >= 1;
   const out: Resultado = {
-    pacote, regime,
-    chk: faltando ? 'INCOMPLETO' : (!valido || semCambio) ? 'ERRO' : 'OK',
-    liq: null, base: null, trib: null, parc: null, ger: null,
+    chk: faltando ? 'INCOMPLETO' : (!valido || semCambio || aliqInvalida) ? 'ERRO' : 'OK',
+    ...vazioRes, ligados, aliquota,
   };
-  if (!vazio(r.qtd) && !vazio(r.preco) && !semCambio && (valido || pacote)) {
+  if (!vazio(r.qtd) && !vazio(r.preco) && !semCambio && valido && !aliqInvalida) {
     out.liq = r.qtd! * r.preco! * fx!;
     out.base = out.liq * (1 + (r.bdi || 0));
-    const aliq = p.aliquotas[regime] ?? 0;
-    out.parc = out.base / (1 - aliq);
+    out.parc = out.base / (1 - aliquota);
     out.trib = out.parc - out.base;
+    out.tribs = {};
+    for (const t of p.tributos) if (ligados[t.id]) out.tribs[t.id] = out.parc * t.aliquota;
     out.ger = out.parc * (1 + (r.prov || 0));
   }
   return out;
 }
 
 const nomeCol = (k: string) => COLUNAS.find(c => c.k === k)?.h ?? k;
+const pct = (v: number) => (v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + '%';
 
 /** Mensagem detalhada do Check (mostrada ao passar o mouse). */
 export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: Set<string> | null): string {
   if (res.chk === 'TITULO') return 'Linha de título (agrupador): não tem quantidade nem preço e não entra nos totais.';
-  if (res.chk === 'OK') return res.pacote
-    ? 'Linha completa. Item de pacote de serviço: tributado como serviço nacional.'
-    : 'Linha completa e classificada corretamente.';
+  const nomes = p.tributos.filter(t => res.ligados[t.id]).map(t => `${t.nome} ${pct(t.aliquota)}`);
+  const trib = nomes.length ? `Tributos ligados: ${nomes.join(', ')} (total ${pct(res.aliquota)}).` : 'Nenhum tributo ligado nesta linha.';
+  if (res.chk === 'OK') return `Linha completa e classificada corretamente. ${trib}`;
   const r = comPadroes(item, cols);
   const msgs: string[] = [];
   const miss = OBRIG_CALCULO.filter(k => vazio(r[k]));
@@ -58,16 +76,18 @@ export function detalheCheck(item: Item, res: Resultado, p: Parametros, cols?: S
     msgs.push(`Tipo de Trabalho = "${r.tipo}" não é válido. Escolha (F) Fornecimento, (C) Construção, (S) Serviços, (T) Turn-key ou (M) Montagem.`);
   if (!vazio(r.moeda) && (p.cambio[String(r.moeda).toUpperCase()] ?? null) === null)
     msgs.push(`Moeda "${r.moeda}" não tem câmbio cadastrado. Cadastre nos parâmetros da empresa ou escolha outra moeda.`);
+  if (res.aliquota >= 1) msgs.push(`A soma dos tributos ligados é ${pct(res.aliquota)}: precisa ser menor que 100%. Desligue algum tributo nesta linha.`);
   return msgs.join('\n') || 'Verifique os dados da linha.';
 }
 
-export interface Totais { ger: number; parc: number; liq: number; inc: number; err: number; tit: number; ok: number }
+export interface Totais { ger: number; parc: number; liq: number; trib: number; inc: number; err: number; tit: number; ok: number; porTributo: Record<string, number> }
 
 export function totais(itens: Item[], p: Parametros, cols?: Set<string> | null): Totais {
-  const t: Totais = { ger: 0, parc: 0, liq: 0, inc: 0, err: 0, tit: 0, ok: 0 };
+  const t: Totais = { ger: 0, parc: 0, liq: 0, trib: 0, inc: 0, err: 0, tit: 0, ok: 0, porTributo: {} };
   for (const it of itens) {
     const c = calcular(it, p, cols);
-    t.ger += c.ger || 0; t.parc += c.parc || 0; t.liq += c.liq || 0;
+    t.ger += c.ger || 0; t.parc += c.parc || 0; t.liq += c.liq || 0; t.trib += c.trib || 0;
+    for (const [id, v] of Object.entries(c.tribs)) t.porTributo[id] = (t.porTributo[id] || 0) + v;
     if (c.chk === 'INCOMPLETO') t.inc++; else if (c.chk === 'ERRO') t.err++; else if (c.chk === 'TITULO') t.tit++; else t.ok++;
   }
   return t;

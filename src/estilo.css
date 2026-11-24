@@ -356,3 +356,11 @@ nav.side a.nav-item.ativo svg{opacity:1}
 .cambio-editar{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;color:var(--accent);text-decoration:none;border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent)}
 .cambio-editar:hover{background:var(--accent-soft);border-style:solid}
 .cambio-editar svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== Células de tributo (ligar/desligar por linha) ===== */
+table.grid td.trib-cel{white-space:nowrap}
+table.grid td.trib-cel{display:table-cell}
+.trib-lig{display:inline-flex;align-items:center;gap:2px;float:left;margin-right:6px;cursor:pointer}
+.trib-lig input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+.trib-manual{color:var(--accent);font-weight:700;font-size:14px;line-height:1}
+table.grid td.trib-cel.off span:last-child{color:var(--muted);font-style:italic;font-size:12px}

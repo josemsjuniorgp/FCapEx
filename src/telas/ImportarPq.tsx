@@ -129,7 +129,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
             </table>
           </div>
           <div className="row" style={{ alignItems: 'flex-end' }}>
-            <label className="fld">Número da PQ (vai para a coluna "Nº da PQ")
+            <label className="fld">Documento de Origem (vai para a coluna "Documento de Origem")
               <input className="in" value={numeroPq} onChange={e => setNumeroPq(e.target.value)} />
             </label>
             <label className="row"><input type="checkbox" checked={titulos} onChange={e => setTitulos(e.target.checked)} />

@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import { useSessao } from '../app/Sessao';
 import { nf, useAcao } from '../app/ui';
-import { adicionarPacote, excluirMoeda, excluirPacote, salvarAliquota, salvarMoeda } from '../dados/api';
+import { excluirMoeda, excluirTributo, salvarMoeda, salvarTributo } from '../dados/api';
 import { parseNum } from '../dominio/normalizacao';
-import type { Regime } from '../dominio/tipos';
+import type { Tributo } from '../dominio/tipos';
+import { Confirmar } from '../app/ui';
 
-const REGIMES: [Regime, string][] = [['NF', 'Nacional · fornecimento'], ['IF', 'Importado · fornecimento'], ['NS', 'Nacional · serviço'], ['IS', 'Importado · serviço']];
-
-/** Parâmetros de cálculo da empresa: câmbio, alíquotas e pacotes de serviço. */
+/** Parâmetros de cálculo da empresa: câmbio e tributos. */
 export function Parametros() {
   const { empresa, parametros, moedas, ehAdmin, recarregarParametros } = useSessao();
   const acao = useAcao();
   const [nova, setNova] = useState({ codigo: '', nome: '', simbolo: '', cambio: '' });
-  const [pacote, setPacote] = useState('');
   if (!empresa || !parametros) return <p className="note">Carregando…</p>;
   const exec = async (fn: () => Promise<unknown>, msg?: string) => { if (await acao(fn, msg)) await recarregarParametros(); };
 
@@ -63,36 +61,76 @@ export function Parametros() {
         )}
       </section>
 
-      <section className="card" style={{ padding: 16 }}>
-        <h2>Alíquotas por regime</h2>
-        <p className="note">Tributos = total ÷ (1 − alíquota) − base. O regime vem da Natureza (N/I) e do Tipo de Trabalho (F = fornecimento; C, S, T, M = serviço).</p>
-        <table className="t"><tbody>
-          {REGIMES.map(([r, n]) => (
-            <tr key={r}><td className="mono">{r}</td><td>{n}</td>
-              <td className="num">{ehAdmin
-                ? <input className="in num" style={{ width: 100 }} defaultValue={nf(parametros.aliquotas[r] * 100, 2)}
-                    onBlur={e => { const v = parseNum(e.target.value); if (!Number.isNaN(v) && v >= 0 && v < 100) exec(() => salvarAliquota(empresa.id, r, v / 100), `Alíquota ${r} salva.`); }} />
-                : nf(parametros.aliquotas[r] * 100, 2)} %</td></tr>
-          ))}
-        </tbody></table>
-      </section>
-
-      <section className="card" style={{ padding: 16 }}>
-        <h2>Pacotes de serviço</h2>
-        <p className="note">Itens destes pacotes são tributados como serviço nacional, para os 5 tipos de trabalho e qualquer natureza. A comparação ignora zeros à esquerda, caixa e símbolos (SERV-CIV-01 = serv civ 1).</p>
-        <div className="row">
-          {parametros.pacotesServico.map(p => (
-            <span key={p} className="pill p-info mono">{p}
-              {ehAdmin && <button className="linkbtn" aria-label={`Remover ${p}`} onClick={() => exec(() => excluirPacote(empresa.id, p))}>×</button>}</span>
-          ))}
-        </div>
-        {ehAdmin && (
-          <div className="row" style={{ marginTop: 10 }}>
-            <input className="in mono" placeholder="SERV-ELE-1" value={pacote} onChange={e => setPacote(e.target.value)} />
-            <button className="btn" disabled={!pacote.trim()} onClick={async () => { await exec(() => adicionarPacote(empresa.id, pacote.trim().toUpperCase()), 'Pacote adicionado.'); setPacote(''); }}>Adicionar pacote</button>
-          </div>
-        )}
-      </section>
+      <Tributos />
     </div>
+  );
+}
+
+const APLICA: [keyof Pick<Tributo, 'fornecimento' | 'servico' | 'nacional' | 'importado'>, string][] = [
+  ['fornecimento', 'Fornecimento'], ['servico', 'Serviço'], ['nacional', 'Nacional'], ['importado', 'Importado'],
+];
+const novoTributo = (): Omit<Tributo, 'id'> => ({ nome: '', aliquota: 0, fornecimento: true, servico: true, nacional: true, importado: true });
+
+/** Tributos da empresa: nome, alíquota e onde se aplicam. Personalizados entram no cálculo igual aos padrões. */
+function Tributos() {
+  const { empresa, parametros, ehAdmin, recarregarParametros } = useSessao();
+  const acao = useAcao();
+  const [novo, setNovo] = useState(novoTributo());
+  const [aliqNovo, setAliqNovo] = useState('');
+  const [perguntar, setPerguntar] = useState<string | null>(null);
+  if (!empresa || !parametros) return null;
+  const exec = async (fn: () => Promise<unknown>, msg?: string) => { if (await acao(fn, msg)) await recarregarParametros(); };
+  const pctTxt = (v: number) => nf(v * 100, 2);
+
+  return (
+    <section className="card" style={{ padding: 16 }}>
+      <h2>Tributos</h2>
+      <p className="note">Cada tributo tem uma alíquota e se aplica conforme o Tipo de Trabalho (F = fornecimento; C, S, T, M = serviço) e a Natureza (N/I).
+        Na grade, cada linha pode <b>ligar ou desligar</b> cada tributo; a regra abaixo define como ele começa.
+        Cálculo: parcial = base ÷ (1 − soma das alíquotas ligadas); cada tributo = parcial × sua alíquota.</p>
+      <table className="t">
+        <thead><tr><th>Tributo</th><th className="num">Alíquota (%)</th>{APLICA.map(([, n]) => <th key={n} style={{ textAlign: 'center' }}>{n}</th>)}<th /></tr></thead>
+        <tbody>
+          {parametros.tributos.map(t => (
+            <tr key={t.id}>
+              <td><b>{t.nome}</b></td>
+              <td className="num">{ehAdmin
+                ? <input className="in num" style={{ width: 100 }} defaultValue={pctTxt(t.aliquota)} aria-label={`Alíquota de ${t.nome}`}
+                    onBlur={e => { const v = parseNum(e.target.value); if (!Number.isNaN(v) && v >= 0 && v < 100 && v / 100 !== t.aliquota) exec(() => salvarTributo(empresa.id, { ...t, aliquota: v / 100 }), `Alíquota de ${t.nome} salva.`); }} />
+                : pctTxt(t.aliquota)}</td>
+              {APLICA.map(([k, n]) => (
+                <td key={k} style={{ textAlign: 'center' }}>
+                  <input type="checkbox" checked={t[k]} disabled={!ehAdmin} aria-label={`${t.nome} se aplica a ${n}`}
+                    onChange={e => exec(() => salvarTributo(empresa.id, { ...t, [k]: e.target.checked }))} />
+                </td>
+              ))}
+              <td>{ehAdmin && (perguntar === t.id
+                ? <Confirmar msg={<>Excluir <b>{t.nome}</b>? Ele sai do cálculo de todas as PX.</>} sim="Excluir" onNao={() => setPerguntar(null)}
+                    onSim={() => { setPerguntar(null); exec(() => excluirTributo(t.id), `${t.nome} excluído.`); }} />
+                : <button className="btn small danger" onClick={() => setPerguntar(t.id)}>Excluir</button>)}</td>
+            </tr>
+          ))}
+          {!parametros.tributos.length && <tr><td colSpan={7} className="note">Nenhum tributo cadastrado: as PX ficam sem tributos.</td></tr>}
+        </tbody>
+      </table>
+      {ehAdmin && (
+        <div className="group-box stack" style={{ gap: 8, marginTop: 12 }}>
+          <strong>Novo tributo</strong>
+          <span className="note">Crie tributos fora do padrão (ex.: CSLL, INSS, taxa municipal). Eles viram colunas disponíveis na grade e entram no cálculo.</span>
+          <div className="row" style={{ alignItems: 'flex-end' }}>
+            <label className="stack" style={{ gap: 3 }}><span className="note">Nome</span>
+              <input className="in" placeholder="ex.: CSLL" maxLength={60} value={novo.nome} onChange={e => setNovo({ ...novo, nome: e.target.value })} /></label>
+            <label className="stack" style={{ gap: 3 }}><span className="note">Alíquota (%)</span>
+              <input className="in num" style={{ width: 110 }} placeholder="1,00" value={aliqNovo} onChange={e => setAliqNovo(e.target.value)} /></label>
+            {APLICA.map(([k, n]) => (
+              <label key={k} className="row" style={{ gap: 4 }}><input type="checkbox" checked={novo[k]} onChange={e => setNovo({ ...novo, [k]: e.target.checked })} />{n}</label>
+            ))}
+            <button className="btn primary" disabled={!novo.nome.trim() || Number.isNaN(parseNum(aliqNovo)) || parseNum(aliqNovo) < 0 || parseNum(aliqNovo) >= 100}
+              onClick={async () => { await exec(() => salvarTributo(empresa.id, { ...novo, aliquota: parseNum(aliqNovo) / 100 }), `Tributo ${novo.nome.trim()} criado.`); setNovo(novoTributo()); setAliqNovo(''); }}>
+              Adicionar tributo</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

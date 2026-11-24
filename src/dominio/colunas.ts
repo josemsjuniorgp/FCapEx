@@ -1,4 +1,4 @@
-export type TipoColuna = 'seq' | 'in' | 'calc';
+export type TipoColuna = 'seq' | 'in' | 'calc' | 'tax';
 
 export interface Coluna {
   k: string;
@@ -16,7 +16,7 @@ export interface Coluna {
 
 export const COLUNAS: Coluna[] = [
   { k: 'seq', h: 'Nº', g: 'Identificação', t: 'seq', lock: true },
-  { k: 'pqdoc', h: 'Nº da PQ', g: 'Identificação', t: 'in', w: 160 },
+  { k: 'pqdoc', h: 'Documento de Origem', g: 'Identificação', t: 'in', w: 170 },
   { k: 'item', h: 'Item PQ', g: 'Identificação', t: 'in', w: 96 },
   { k: 'area', h: 'Área', g: 'Código EAP', t: 'in', w: 70 },
   { k: 'subarea', h: 'Subárea', g: 'Código EAP', t: 'in', w: 80 },
@@ -26,7 +26,7 @@ export const COLUNAS: Coluna[] = [
   { k: 'qtd', h: 'Quantidade', g: 'Quantidades', t: 'in', num: true, req: true, dec: 2 },
   { k: 'prov', h: 'Provisão eng.', g: 'Quantidades', t: 'in', num: true, pct: true },
   { k: 'hh', h: 'HH', g: 'Quantidades', t: 'in', num: true, dec: 0 },
-  { k: 'pacote', h: 'Pacote', g: 'Contratação', t: 'in', req: true },
+  { k: 'pacote', h: 'Pacote', g: 'Contratação', t: 'in' },
   { k: 'tipo', h: 'Tipo de Trabalho', g: 'Contratação', t: 'in', req: true, w: 160 },
   { k: 'orig', h: 'Natureza', g: 'Contratação', t: 'in', req: true, w: 130 },
   { k: 'moeda', h: 'Moeda', g: 'Contratação', t: 'in', req: true, w: 130 },
@@ -51,3 +51,18 @@ export const OPCOES = {
 
 /** Valor usado no cálculo quando a coluna não faz parte do modelo da PX. */
 export const PADROES = { un: '', prov: 0, hh: 0, pacote: 'N/A', tipo: 'F', orig: 'N', moeda: 'BRL', bdi: 0 } as const;
+
+/** Chave da coluna de um tributo da empresa. */
+export const chaveTributo = (id: string) => 'tx:' + id;
+export const idDoTributo = (k: string) => (k.startsWith('tx:') ? k.slice(3) : null);
+
+/** Todas as colunas possíveis: as fixas + uma coluna por tributo da empresa (no grupo Tributos, antes do total). */
+export function colunasCompletas(tributos: { id: string; nome: string }[]): Coluna[] {
+  const out: Coluna[] = [];
+  for (const c of COLUNAS) {
+    if (c.k === 'trib') for (const t of tributos)
+      out.push({ k: chaveTributo(t.id), h: `${t.nome} (R$)`, g: 'Tributos', t: 'tax', w: 120, f: `parcial × alíquota do ${t.nome}, se ligado na linha` });
+    out.push(c);
+  }
+  return out;
+}
