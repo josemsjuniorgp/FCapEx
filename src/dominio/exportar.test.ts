@@ -107,11 +107,11 @@ describe('exportação para Excel', async () => {
     expect(ws.getCell(15, 1).font?.bold).toBe(true);
   });
 
-  it('títulos coloridos por nível (laranja escuro → claro)', () => {
-    expect((ws.getCell(15, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FF9A3412');   // 1.1   → 1º título
-    expect(ws.getCell(15, 1).font?.color?.argb).toBe('FFFFFFFF');
-    expect((ws.getCell(17, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FFC2570C');   // 1.1.2 → 2º título
-    expect((ws.getCell(19, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FF9A3412');   // 1.2   → 1º título
+  it('títulos coloridos por nível (laranja pastel, mais forte → mais claro)', () => {
+    expect((ws.getCell(15, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FFF3C29B');   // 1.1   → 1º título
+    expect(ws.getCell(15, 1).font?.color?.argb).toBe('FF5A2A0C');
+    expect((ws.getCell(17, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FFF7D3B4');   // 1.1.2 → 2º título
+    expect((ws.getCell(19, 1).fill as ExcelJS.FillPattern).fgColor?.argb).toBe('FFF3C29B');   // 1.2   → 1º título
   });
 
   it('linha de TOTAL igual ao total geral', () => {
