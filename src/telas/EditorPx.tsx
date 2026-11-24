@@ -12,6 +12,7 @@ import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
 import type { Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
+import { RenomearPx } from './RenomearPx';
 
 const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
 type Filtro = null | 'OK' | 'INCOMPLETO' | 'ERRO';
@@ -34,6 +35,7 @@ export function EditorPx() {
   const [sel, setSel] = useState<string | null>(null);
   const [painel, setPainel] = useState<'dados' | 'colunas' | null>(null);
   const [importar, setImportar] = useState(false);
+  const [editandoCab, setEditandoCab] = useState(false);
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -138,8 +140,16 @@ export function EditorPx() {
             {cliente && <><span className="sep">›</span><Link to={`/?cliente=${cliente.id}`}>{cliente.nome}</Link></>}
             {projeto && <><span className="sep">›</span><span className="atual">{projeto.nome}</span></>}
           </nav>
+          {editandoCab ? (
+            <RenomearPx px={px} onCancelar={() => setEditandoCab(false)} onSalvo={() => { setEditandoCab(false); carregar(); }} />
+          ) : (
           <div className="px-cab-linha">
             <h1>{px.nome}</h1>
+            {podeEditar && (
+              <button className="lapis" title="Corrigir código e nome" aria-label="Corrigir código e nome" onClick={() => setEditandoCab(true)}>
+                <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" /></svg>
+              </button>
+            )}
             <span className="chip codigo" title="Código da PX">{px.codigo}
               <button aria-label="Copiar código" title="Copiar código"
                 onClick={() => navigator.clipboard?.writeText(px.codigo).then(() => avisar('Código copiado.'), () => avisar('Não foi possível copiar.'))}>
@@ -149,6 +159,7 @@ export function EditorPx() {
             <span className="chip rev"><i />Rev {revAtual?.numero ?? '—'}{revAtual ? ' · em edição' : ''}</span>
             <span className="chip">{px.modelo_nome}</span>
           </div>
+          )}
         </div>
         <div className="px-cab-data">Atualizada em<b>{dataHora(px.atualizado_em)}</b></div>
       </header>

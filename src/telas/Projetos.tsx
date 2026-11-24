@@ -8,6 +8,7 @@ import {
 } from '../dados/api';
 import { totais, type Totais } from '../dominio/calculo';
 import { NovaPx } from './NovaPx';
+import { RenomearPx } from './RenomearPx';
 
 export function Projetos() {
   const { empresa, podeEditar, ehAdmin, parametros } = useSessao();
@@ -25,6 +26,7 @@ export function Projetos() {
   const [novoProjeto, setNovoProjeto] = useState<string | null>(null);
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [novaPx, setNovaPx] = useState<string | null>(null);
+  const [renomear, setRenomear] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!empresa) return;
@@ -142,7 +144,9 @@ export function Projetos() {
                   const t = resumo[x.id];
                   return (
                     <article className="card px-card" key={x.id}>
-                      <div><strong>{x.nome}</strong><div className="note mono">{x.codigo} · Rev {revAtual(x.id)}</div></div>
+                      {renomear === x.id
+                        ? <RenomearPx compacto px={x} onCancelar={() => setRenomear(null)} onSalvo={() => { setRenomear(null); carregar(); }} />
+                        : <div><strong>{x.nome}</strong><div className="note mono">{x.codigo} · Rev {revAtual(x.id)}</div></div>}
                       <div className="tot">{t ? brlCurto(t.ger) : '—'}</div>
                       <div className="meta">
                         <span className="pill p-mut">{x.modelo_nome}</span>
@@ -155,6 +159,7 @@ export function Projetos() {
                         ? <Confirmar msg={<>Excluir a <b>{x.codigo}</b> e todas as revisões dela?</>} sim="Excluir PX"
                             onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirPx(x.id), `${x.codigo} excluída.`)} />
                         : <div className="row"><span className="note">Atualizada {dataHora(x.atualizado_em)}</span><span className="spacer" />
+                            {podeEditar && <button className="btn small" onClick={() => setRenomear(x.id)}>Renomear</button>}
                             {podeEditar && <button className="btn small danger" onClick={() => setPerguntar('x:' + x.id)}>Excluir</button>}
                             <button className="btn small primary" onClick={() => ir(`/px/${x.id}`)}>{podeEditar ? 'Editar' : 'Abrir'}</button></div>}
                     </article>
