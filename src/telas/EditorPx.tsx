@@ -172,13 +172,13 @@ export function EditorPx() {
         <div className="px-cab-data">Atualizada em<b>{dataHora(px.atualizado_em)}</b></div>
       </header>
       <div className="kpis">
-        <div className="kpi" title="Com BDI, tributos e provisão, convertido para R$"><small>Total Geral Bruto (R$)</small><b>{brlCurto(t.ger)}</b></div>
-        <div className="kpi" title="Somente quantidade × preço unitário, convertido para R$"><small>Total Geral Líquido (R$)</small><b>{brlCurto(t.liq)}</b></div>
-        <div className="kpi" title={usd ? `Total Geral Bruto ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
+        <div className="kpi moldura brl" title="Com BDI, tributos e provisão, convertido para R$"><small>Total Geral Bruto (R$)</small><b>{brlCurto(t.ger)}</b></div>
+        <div className="kpi moldura brl" title="Somente quantidade × preço unitário, convertido para R$"><small>Total Geral Líquido (R$)</small><b>{brlCurto(t.liq)}</b></div>
+        <div className="kpi moldura usd" title={usd ? `Total Geral Bruto ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
           <small>Total Geral Bruto (US$)</small><b>{usd ? usdCurto(t.ger / usd) : '—'}</b></div>
-        <div className="kpi" title={usd ? `Total Geral Líquido ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
+        <div className="kpi moldura usd" title={usd ? `Total Geral Líquido ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
           <small>Total Geral Líquido (US$)</small><b>{usd ? usdCurto(t.liq / usd) : '—'}</b></div>
-        <div className="kpi"><small>Itens</small><b>{itens.length - t.tit}</b></div>
+        <div className="kpi moldura neutro"><small>Itens</small><b>{itens.length - t.tit}</b></div>
         <div className="row">
           <button className="pill p-ok" aria-pressed={filtro === 'OK'} onClick={() => setFiltro(filtro === 'OK' ? null : 'OK')}><i />{t.ok} ok</button>
           <button className="pill p-warn" onClick={() => setFiltro(filtro === 'INCOMPLETO' ? null : 'INCOMPLETO')}><i />{t.inc} incompletas</button>
