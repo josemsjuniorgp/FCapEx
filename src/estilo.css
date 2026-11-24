@@ -343,3 +343,16 @@ nav.side a.nav-item.ativo svg{opacity:1}
 .kpi.moldura.usd b{color:#3f4f8f}
 @media (prefers-color-scheme: dark){.kpi.moldura.usd::before{background:#8fa0e0}.kpi.moldura.usd b{color:#b4c1f0}}
 .kpis{gap:10px 12px;padding:12px 20px}
+
+/* ===== Linha de câmbio ===== */
+.cambio{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cambio-rot{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.cambio-moeda{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:12px;cursor:default}
+.cambio-moeda b{font-weight:600;color:var(--ink)}
+.cambio-moeda .cod{font:500 10.5px var(--mono);color:var(--muted);letter-spacing:.03em}
+.cambio-moeda .val{font:500 12px var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.cambio-moeda.sem{border-color:color-mix(in srgb,var(--err) 40%,transparent);background:var(--err-soft)}
+.cambio-moeda.sem .val{color:var(--err);font-family:var(--sans)}
+.cambio-editar{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;color:var(--accent);text-decoration:none;border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent)}
+.cambio-editar:hover{background:var(--accent-soft);border-style:solid}
+.cambio-editar svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}

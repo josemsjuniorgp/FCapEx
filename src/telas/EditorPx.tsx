@@ -20,7 +20,7 @@ type Filtro = null | 'OK' | 'INCOMPLETO' | 'ERRO';
 
 export function EditorPx() {
   const { id = '' } = useParams();
-  const { empresa, parametros, moedas, podeEditar } = useSessao();
+  const { empresa, parametros, moedas, podeEditar, ehAdmin } = useSessao();
   const acao = useAcao();
   const avisar = useAviso();
   const ir = useNavigate();
@@ -186,7 +186,21 @@ export function EditorPx() {
           {filtro && <button className="linkbtn" onClick={() => setFiltro(null)}>limpar filtro</button>}
         </div>
         <span className="spacer" />
-        <span className="note">Câmbio: {moedas.filter(m => m.codigo !== 'BRL').map(m => `${m.simbolo} ${m.cambio_brl ? nf(m.cambio_brl, 4) : '—'}`).join(' · ') || '—'} (<Link to="/parametros">parâmetros</Link>)</span>
+        <div className="cambio" aria-label="Câmbio">
+          <span className="cambio-rot">Câmbio</span>
+          {moedas.filter(m => m.codigo !== 'BRL').map(m => (
+            <span key={m.codigo} className={'cambio-moeda' + (m.cambio_brl ? '' : ' sem')}
+              title={m.cambio_brl ? `1 ${m.nome} = R$ ${nf(m.cambio_brl, 4)}` : `${m.nome} sem câmbio cadastrado: itens nessa moeda ficam com erro no Check`}>
+              <b>{m.simbolo}</b><span className="cod">{m.codigo}</span><span className="val">{m.cambio_brl ? nf(m.cambio_brl, 4) : 'sem câmbio'}</span>
+            </span>
+          ))}
+          {!moedas.some(m => m.codigo !== 'BRL') && <span className="note">só Real (R$)</span>}
+          {ehAdmin && (
+            <Link to="/parametros" className="cambio-editar" title="Editar câmbio em Parâmetros">
+              <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" /></svg>Editar câmbio
+            </Link>
+          )}
+        </div>
       </div>
       <div className="tools">
         <FiltroGrupo valor={grupo} onEscolher={setGrupo} total={t.ger} totalItens={itens.length - t.tit}
