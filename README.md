@@ -55,6 +55,14 @@ npm run test:db
 Segurança do banco: isolamento entre empresas, papéis, revisões imutáveis e storage.
 Precisa de PostgreSQL instalado localmente.
 
+```bash
+npm run test:e2e
+```
+
+Roteiros no navegador (pasta `e2e/`) contra o Supabase local: sobe Docker, Supabase e o site,
+gera as planilhas de teste e roda tudo. Para um roteiro só: `npm run test:e2e -- fretes`.
+Precisa de Docker e do Playwright com Chromium.
+
 ## Publicar no Supabase (produção)
 
 ```bash

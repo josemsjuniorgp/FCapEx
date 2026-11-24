@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:db": "bash supabase/tests/run.sh"
+    "test:db": "bash supabase/tests/run.sh",
+    "test:e2e": "bash e2e/rodar.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

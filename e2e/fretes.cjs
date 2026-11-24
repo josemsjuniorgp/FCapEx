@@ -1,0 +1,87 @@
+const { chromium } = require('playwright');
+const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
+(async () => {
+  const b = await chromium.launch();
+  const p = await (await b.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 2 })).newPage();
+  p.setDefaultTimeout(15000); p.on('pageerror', e => console.log('pageerror', e.message));
+  const passo = async (n, fn) => { try { await fn(); console.log('✔', n); } catch (e) { console.log('✘', n, '-', e.message.split('\n').slice(0, 3).join(' | ')); console.log((await p.locator('body').innerText().catch(() => '')).slice(0, 700)); await p.screenshot({ path: `${S}/shots/erro.png` }); process.exit(1); } };
+  await passo('conta, empresa, cliente e projeto', async () => {
+    await p.goto(SITE);
+    await p.getByRole('button', { name: 'Não tem conta? Criar conta' }).click();
+    await p.getByLabel('E-mail').fill(`fre${Date.now()}@teste.dev`); await p.getByLabel('Senha').fill('senha-teste-123');
+    await p.getByRole('button', { name: 'Criar conta' }).click();
+    await p.getByPlaceholder('Nome da empresa').fill('Empresa Fretes'); await p.getByRole('button', { name: 'Criar', exact: true }).click();
+    await p.getByRole('button', { name: '+ Novo cliente' }).click(); await p.getByPlaceholder('Nome do cliente').fill('Cliente F'); await p.getByRole('button', { name: 'Criar cliente' }).click();
+    await p.getByRole('button', { name: 'Novo projeto' }).click(); await p.getByPlaceholder('Nome do projeto').fill('Projeto F'); await p.getByRole('button', { name: 'Criar projeto' }).click();
+    await p.getByRole('heading', { name: 'Projeto F' }).waitFor();
+  });
+  await passo('cadastrar fretes nacionais e internacional em Parâmetros', async () => {
+    await p.getByRole('link', { name: 'Parâmetros', exact: true }).click();
+    const nac = p.locator('section.card', { has: p.getByRole('heading', { name: 'Fretes nacionais' }) });
+    await nac.getByPlaceholder('ex.: Rodoviário SP → MG').fill('Rodoviário SP-MG');
+    await nac.locator('.group-box select').first().selectOption('MG');
+    await nac.getByPlaceholder('1.500,00').fill('500');
+    await nac.getByRole('button', { name: 'Adicionar frete' }).click();
+    await p.getByText('Frete Rodoviário SP-MG criado.').waitFor();
+    await nac.getByPlaceholder('ex.: Rodoviário SP → MG').fill('3% do líquido');
+    await nac.locator('.group-box select').nth(1).selectOption('percentual');
+    await nac.getByPlaceholder('3,00').fill('3');
+    await nac.getByRole('button', { name: 'Adicionar frete' }).click();
+    await p.getByText('Frete 3% do líquido criado.').waitFor();
+    const int = p.locator('section.card', { has: p.getByRole('heading', { name: 'Fretes internacionais' }) });
+    await int.getByPlaceholder('ex.: Marítimo Xangai → Santos').fill('Marítimo China');
+    await int.getByPlaceholder('ex.: China').fill('China');
+    await int.getByPlaceholder('1.500,00').fill('200');
+    await int.locator('.group-box select').last().selectOption('USD');
+    await int.getByRole('button', { name: 'Adicionar frete' }).click();
+    await p.getByText('Frete Marítimo China criado.').waitFor();
+    await nac.getByRole('cell', { name: 'Rodoviário SP-MG' }).waitFor();
+    await p.locator('section.card', { has: p.getByRole('heading', { name: 'Fretes nacionais' }) }).screenshot({ path: `${S}/shots/22-fretes-parametros.png` });
+    await int.screenshot({ path: `${S}/shots/22b-fretes-int.png` });
+  });
+  let cab, linha;
+  const td = h => linha.locator('td').nth(cab.indexOf(h));
+  const lerCab = async () => { cab = (await p.locator('table.grid thead tr.h th').allInnerTexts()).map(x => x.replace(/fx$/, '').trim()); };
+  await passo('PX nova já traz as 4 colunas de frete', async () => {
+    await p.getByRole('link', { name: 'Projetos', exact: true }).click();
+    await p.getByRole('button', { name: 'Nova PX' }).click();
+    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-F-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste fretes');
+    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-F-01' }).waitFor();
+    await p.getByRole('button', { name: 'Inserir item' }).click();
+    linha = p.locator('table.grid tbody tr').first(); await linha.waitFor(); await lerCab();
+    for (const h of ['Frete nacional', 'Frete nacional (R$)', 'Frete internacional', 'Frete internacional (R$)'])
+      if (!cab.includes(h)) throw new Error('falta coluna ' + h + ': ' + cab.join('|'));
+  });
+  await passo('item com frete nacional (valor) e internacional (US$): soma à base antes dos tributos', async () => {
+    const escrever = async (h, v) => { const i = td(h).locator('input, textarea'); await i.fill(v); await i.press('Enter'); await p.waitForTimeout(250); };
+    await escrever('Descrição', 'Montagem de equipamento');
+    await escrever('Quantidade', '1');
+    await td('Tipo de Trabalho').locator('select').selectOption('M'); await p.waitForTimeout(250);
+    await td('Natureza').locator('select').selectOption('N'); await p.waitForTimeout(250);
+    await td('Moeda').locator('select').selectOption('BRL'); await p.waitForTimeout(250);
+    await escrever('Preço unit.', '1000');
+    await linha.getByText('OK', { exact: true }).waitFor();
+    if ((await td('Frete nacional (R$)').innerText()).trim() !== '0,00') throw new Error('sem frete deveria mostrar 0,00');
+    await td('Frete nacional').locator('select').selectOption({ label: 'Rodoviário SP-MG · MG' }); await p.waitForTimeout(400);
+    await td('Frete internacional').locator('select').selectOption({ label: 'Marítimo China · China' }); await p.waitForTimeout(400);
+    const v = async h => (await td(h).innerText()).trim();
+    const esperado = { 'Frete nacional (R$)': '500,00', 'Frete internacional (R$)': '1.040,00', 'Preço total s/ trib. (R$)': '2.540,00', 'Total geral (R$)': '2.962,10' };
+    for (const [h, e] of Object.entries(esperado)) if (await v(h) !== e) throw new Error(`${h}: ${await v(h)} (esperado ${e})`);
+    const kpi = async r => (await p.locator('.kpi', { hasText: r }).locator('b').innerText()).replace(/\s/g, ' ');
+    if (await kpi('Total Geral Líquido (R$)') !== 'R$ 1.000,00') throw new Error('líquido não deveria ter frete: ' + await kpi('Total Geral Líquido (R$)'));
+    if (await kpi('Total Geral Bruto (R$)') !== 'R$ 2.962,10') throw new Error('bruto: ' + await kpi('Total Geral Bruto (R$)'));
+    const dica = await linha.locator('td.chk').getAttribute('title');
+    if (!/Frete: Rodoviário SP-MG \+ Marítimo China/.test(dica)) throw new Error('Check sem frete: ' + dica);
+    await p.evaluate(() => { const g = document.querySelector('.gridwrap'); const th = [...document.querySelectorAll('table.grid thead tr.h th')].find(t => t.textContent.startsWith('Preço unit')); g.scrollLeft = th.offsetLeft - 60; });
+    await p.waitForTimeout(300);
+    await p.locator('.workspace').screenshot({ path: `${S}/shots/23-fretes-grade.png` });
+  });
+  await passo('trocar para frete percentual (3% do líquido) e conferir; fica salvo', async () => {
+    await td('Frete nacional').locator('select').selectOption({ label: '3% do líquido · SP' }); await p.waitForTimeout(500);
+    if ((await td('Frete nacional (R$)').innerText()).trim() !== '30,00') throw new Error('3% de 1.000 deveria ser 30,00: ' + await td('Frete nacional (R$)').innerText());
+    await p.reload(); linha = p.locator('table.grid tbody tr').first(); await linha.getByText('OK', { exact: true }).waitFor(); await lerCab();
+    if ((await td('Frete nacional (R$)').innerText()).trim() !== '30,00') throw new Error('não ficou salvo');
+    if ((await td('Frete internacional (R$)').innerText()).trim() !== '1.040,00') throw new Error('internacional não ficou salvo');
+  });
+  console.log('FIM'); await b.close();
+})();

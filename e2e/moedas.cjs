@@ -1,0 +1,91 @@
+const { chromium } = require('playwright');
+const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
+(async () => {
+  const b = await chromium.launch();
+  const p = await (await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 })).newPage();
+  p.setDefaultTimeout(15000); p.on('pageerror', e => console.log('pageerror', e.message));
+  const passo = async (n, fn) => { try { await fn(); console.log('✔', n); } catch (e) { console.log('✘', n, '-', e.message.split('\n').slice(0, 3).join(' | ')); console.log((await p.locator('body').innerText().catch(() => '')).slice(0, 800)); await p.screenshot({ path: `${S}/shots/erro.png` }); process.exit(1); } };
+  await passo('conta, empresa, cliente, projeto e PX', async () => {
+    await p.goto(SITE);
+    await p.getByRole('button', { name: 'Não tem conta? Criar conta' }).click();
+    await p.getByLabel('E-mail').fill(`moe${Date.now()}@teste.dev`); await p.getByLabel('Senha').fill('senha-teste-123');
+    await p.getByRole('button', { name: 'Criar conta' }).click();
+    await p.getByPlaceholder('Nome da empresa').fill('Empresa Moedas'); await p.getByRole('button', { name: 'Criar', exact: true }).click();
+    await p.getByRole('button', { name: '+ Novo cliente' }).click();
+    await p.getByPlaceholder('Nome do cliente').fill('Cliente M'); await p.getByRole('button', { name: 'Criar cliente' }).click();
+    await p.getByRole('button', { name: 'Novo projeto' }).click();
+    await p.getByPlaceholder('Nome do projeto').fill('Projeto M'); await p.getByRole('button', { name: 'Criar projeto' }).click();
+    await p.getByRole('button', { name: 'Nova PX' }).click();
+    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-M-01');
+    await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste moedas');
+    await p.getByRole('button', { name: 'Criar PX' }).click();
+    await p.locator('.px-cab', { hasText: 'PX-M-01' }).filter({ hasText: 'Rev 0' }).waitFor();
+  });
+  await passo('adicionar a moeda Libra (GBP) em Parâmetros', async () => {
+    await p.getByRole('link', { name: 'Parâmetros', exact: true }).click();
+    await p.getByText('Nova moeda', { exact: true }).waitFor();
+    await p.getByPlaceholder('GBP').fill('gbp');
+    await p.getByPlaceholder('Libra esterlina').fill('Libra esterlina');
+    await p.getByPlaceholder('£').fill('£');
+    await p.getByPlaceholder('7,1000').fill('7');
+    await p.getByRole('button', { name: 'Adicionar moeda' }).click();
+    await p.getByText('Moeda GBP adicionada.').waitFor();
+    await p.getByRole('cell', { name: 'GBP', exact: true }).waitFor();
+    await p.screenshot({ path: `${S}/shots/13-nova-moeda.png` });
+  });
+  await passo('item em libras: conversões nos 4 indicadores', async () => {
+    await p.getByRole('link', { name: 'Projetos' }).click();
+    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.getByRole('button', { name: 'Inserir item' }).click();
+    const cab = await p.locator('table.grid thead tr.h th').allInnerTexts();
+    const col = h => cab.findIndex(x => x.replace(/fx$/, '').trim() === h);
+    const linha = p.locator('table.grid tbody tr').first();
+    const td = h => linha.locator('td').nth(col(h));
+    const escrever = async (h, v) => { const i = td(h).locator('input, textarea'); await i.fill(v); await i.press('Enter'); await p.waitForTimeout(250); };
+    await escrever('Descrição', 'Equipamento importado da Inglaterra');
+    await escrever('Quantidade', '10');
+    await escrever('Pacote', 'P-1');
+    await td('Tipo de Trabalho').locator('select').selectOption('F'); await p.waitForTimeout(250);
+    await td('Natureza').locator('select').selectOption('N'); await p.waitForTimeout(250);
+    await td('Moeda').locator('select').selectOption('GBP'); await p.waitForTimeout(250);
+    await escrever('Preço unit.', '100');
+    await escrever('BDI', '10');
+    await linha.getByText('OK', { exact: true }).waitFor();
+    const simbolo = await td('Preço unit.').locator('.cur span').innerText();
+    if (simbolo !== '£') throw new Error('símbolo da moeda no preço: ' + simbolo);
+    const kpis = await p.locator('.kpis').innerText();
+    const esperado = { 'Total Geral Bruto (R$)': 'R$ 8.484,85', 'Total Geral Líquido (R$)': 'R$ 7.000,00', 'Total Geral Bruto (US$)': 'US$ 1.631,70', 'Total Geral Líquido (US$)': 'US$ 1.346,15' };
+    for (const [rot, val] of Object.entries(esperado)) {
+      const k = await p.locator('.kpi', { hasText: rot }).locator('b').innerText();
+      if (k.replace(/\s/g, ' ') !== val) throw new Error(`${rot}: ${k} (esperado ${val})`);
+    }
+    if (/Total parcial/.test(kpis)) throw new Error('Total parcial ainda aparece');
+    const camb = await p.locator('.cambio').innerText(); if (!/£\s*GBP\s*7,0000/.test(camb)) throw new Error('câmbio da libra não aparece: ' + camb);
+    await p.screenshot({ path: `${S}/shots/14-indicadores.png` });
+  });
+  await passo('mudar o câmbio da libra atualiza os indicadores', async () => {
+    await p.getByRole('link', { name: 'Parâmetros', exact: true }).click();
+    const campo = p.getByRole('row', { name: /GBP/ }).locator('input, textarea');
+    await campo.fill('8'); await campo.blur();
+    await p.getByText('Câmbio de GBP salvo.').waitFor();
+    await p.getByRole('link', { name: 'Projetos' }).click();
+    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.locator('table.grid tbody tr').first().getByText('OK', { exact: true }).waitFor();
+    await p.locator('.kpi', { hasText: 'Total Geral Líquido (R$)' }).locator('b').filter({ hasText: /8\.000,00/ }).waitFor();
+  });
+  await passo('moeda sem câmbio aparece em vermelho; botão Editar câmbio leva aos Parâmetros', async () => {
+    await p.getByRole('link', { name: 'Parâmetros', exact: true }).click();
+    await p.getByPlaceholder('GBP').fill('JPY'); await p.getByPlaceholder('Libra esterlina').fill('Iene'); await p.getByPlaceholder('£').fill('¥');
+    await p.getByRole('button', { name: 'Adicionar moeda' }).click();
+    await p.getByText('Moeda JPY adicionada.').waitFor();
+    await p.getByRole('link', { name: 'Projetos', exact: true }).click();
+    await p.getByRole('button', { name: 'Editar' }).first().click();
+    const sem = p.locator('.cambio-moeda.sem', { hasText: 'JPY' });
+    await sem.getByText('sem câmbio').waitFor();
+    await p.locator('.cambio').screenshot({ path: `${S}/shots/18-cambio.png` });
+    await p.locator('.kpis').screenshot({ path: `${S}/shots/18b-topo.png` });
+    await p.getByRole('link', { name: 'Editar câmbio' }).click();
+    await p.getByRole('heading', { name: 'Moedas e câmbio' }).waitFor();
+  });
+  console.log('FIM'); await b.close();
+})();
