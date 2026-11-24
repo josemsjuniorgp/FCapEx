@@ -408,3 +408,13 @@ table.grid td.in-c select{text-overflow:ellipsis}
 .bdi-vazio{padding:28px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .bdi-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft, #eef7f8)}
 @media (min-width:1500px){.tools{flex-wrap:nowrap}.tools > *{flex-shrink:0}.tools input[type=search].in{flex-shrink:1}}
+
+/* ---------- cabeçalho da grade: grupos em verde-escuro, colunas em verde intermediário ---------- */
+:root{--cab-g:#084f55;--cab-g-ink:#ffffff;--cab-g-sep:rgba(255,255,255,.22);--cab-h:#c6e3e5;--cab-h-ink:#2c4a50;--cab-h-sep:#a7d0d3}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cab-g:#0d4c52;--cab-g-ink:#ffffff;--cab-g-sep:rgba(255,255,255,.18);--cab-h:#1f4448;--cab-h-ink:#cfe3e5;--cab-h-sep:#2d5a5f}}
+:root[data-theme="dark"]{--cab-g:#0d4c52;--cab-g-ink:#ffffff;--cab-g-sep:rgba(255,255,255,.18);--cab-h:#1f4448;--cab-h-ink:#cfe3e5;--cab-h-sep:#2d5a5f}
+table.grid thead tr.g th{background:var(--cab-g);color:var(--cab-g-ink);text-align:center;border-bottom:0;border-right:1px solid var(--cab-g-sep);letter-spacing:.02em}
+table.grid thead tr.h th{background:var(--cab-h);color:var(--cab-h-ink);text-align:center;border-bottom:1px solid var(--cab-h-sep);border-right:1px solid var(--cab-h-sep)}
+table.grid thead tr.h th .fx{color:var(--cab-g)}
+table.grid thead tr.h th:hover .redim::after{background:var(--cab-h-sep)}
+table.grid thead tr.h th .redim:hover::after,table.grid thead tr.h th .redim.manual::after{background:var(--cab-g)}
