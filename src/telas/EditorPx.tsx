@@ -37,6 +37,7 @@ export function EditorPx() {
   const [painel, setPainel] = useState<'dados' | 'colunas' | null>(null);
   const [importar, setImportar] = useState(false);
   const [editandoCab, setEditandoCab] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -122,6 +123,27 @@ export function EditorPx() {
     const antes = px;
     setPx({ ...px, colunas: nova });
     if (!(await acao(() => atualizarPx(px.id, { colunas: nova }), incluir ? 'Coluna inserida.' : 'Coluna excluída.'))) setPx(antes);
+  }
+
+  async function exportar() {
+    if (!px || !parametros || !empresa) return;
+    setExportando(true);
+    await acao(async () => {
+      const projeto = projetos.find(p => p.id === px.projeto_id);
+      const cliente = clientes.find(c => c.id === projeto?.cliente_id);
+      const { gerarExcel, nomeArquivo } = await import('../dominio/exportar');
+      const buf = await gerarExcel({
+        empresa: empresa.nome, cliente: cliente?.nome ?? '', projeto: projeto?.nome ?? '',
+        px: { codigo: px.codigo, nome: px.nome, modelo_nome: px.modelo_nome, colunas: px.colunas },
+        revisao: revAtual?.numero ?? 0, emEdicao: !!revAtual, itens, parametros, moedas,
+      });
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = nomeArquivo(px.codigo, revAtual?.numero ?? 0);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }, 'Planilha exportada.');
+    setExportando(false);
   }
 
   function ocultar(k: string, sim: boolean) {
@@ -216,6 +238,8 @@ export function EditorPx() {
         <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Colunas</button>
         <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
         <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar</button>
+        <button className="btn" onClick={exportar} disabled={exportando} title="Baixar a PX em Excel (.xlsx) com resumo e parâmetros">
+          {exportando ? 'Gerando…' : 'Exportar Excel'}</button>
         {editavel && <button className="btn primary" onClick={() => setPerguntar('emitir')}>Emitir nova revisão</button>}
       </div>
       {perguntar === 'emitir' && revAtual && (
