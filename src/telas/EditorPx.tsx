@@ -387,7 +387,7 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar }: {
             onChange={e => onSalvar({ ...(it.tribLigados ?? {}), [id]: e.target.checked })} onClick={e => e.stopPropagation()} />
           {manual && <span className="trib-manual" aria-hidden="true">•</span>}
         </label>
-        <span>{ligado ? (v === undefined ? '—' : nf(v, 2)) : 'desligado'}</span>
+        <span>{ligado ? (v === undefined ? '—' : nf(v, 2)) : '0,00'}</span>
       </td>
     );
   }

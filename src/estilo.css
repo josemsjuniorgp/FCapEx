@@ -363,4 +363,4 @@ table.grid td.trib-cel{display:table-cell}
 .trib-lig{display:inline-flex;align-items:center;gap:2px;float:left;margin-right:6px;cursor:pointer}
 .trib-lig input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
 .trib-manual{color:var(--accent);font-weight:700;font-size:14px;line-height:1}
-table.grid td.trib-cel.off span:last-child{color:var(--muted);font-style:italic;font-size:12px}
+table.grid td.trib-cel.off span:last-child{color:var(--muted)}

@@ -209,7 +209,7 @@ function abaPx(
       if (c.t === 'tax') {
         const id = idDoTributo(c.k)!;
         if (r.ligados[id]) { cel.value = r.tribs[id] ?? null; cel.numFmt = FMT_BRL; }
-        else { cel.value = 'desligado'; cel.font = { name: FONTE, size: 8.5, italic: true, color: { argb: COR.cinza } }; cel.alignment = { horizontal: 'center', vertical: 'middle' }; }
+        else { cel.value = 0; cel.numFmt = FMT_BRL; cel.font = { name: FONTE, size: 10, color: { argb: COR.cinza } }; }
         cel.fill = fill(par ? 'FFE7ECF0' : COR.calc);
         return;
       }

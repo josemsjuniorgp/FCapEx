@@ -144,7 +144,7 @@ describe('exportação para Excel', async () => {
     expect(texto(w)).toContain('Esta PX ainda não tem itens.');
   });
 
-  it('colunas de tributo: valor por linha, "desligado" e total por tributo', async () => {
+  it('colunas de tributo: valor por linha, 0,00 quando desligado e total por tributo', async () => {
     const itens = ITENS.map(i => (i.id === 'i4' ? { ...i, tribLigados: { iss: false } } : i));
     const colunasPx = [...COLUNAS.map(c => c.k), 'tx:iss', 'tx:pis'];
     const w = (await abrir({ ...DADOS, itens, px: { ...DADOS.px, colunas: colunasPx } })).getWorksheet('PX')!;
@@ -155,7 +155,8 @@ describe('exportação para Excel', async () => {
     const cols = new Set(colunasPx);
     const r2 = calcular(itens[1], P, cols);
     expect(w.getCell(16, iIss).value).toBeCloseTo(r2.tribs.iss, 6);        // linha 1.1.1 (serviço): ISS ligado
-    expect(w.getCell(18, iIss).value).toBe('desligado');                     // linha 1.1.2.1: ISS desligado à mão
+    expect(w.getCell(18, iIss).value).toBe(0);                               // linha 1.1.2.1: ISS desligado à mão
+    expect(w.getCell(18, iIss).numFmt).toContain('R$');
     const tot = totais(itens, P, cols);
     const linhaTotal = Number(achar(w, 'TOTAL')!.row);
     expect(w.getCell(linhaTotal, iIss).value).toBeCloseTo(tot.porTributo.iss, 6);
