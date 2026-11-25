@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { lerExcel } from './excel';
-import { avaliar, bdiDaPlanilha, destinosIniciais, paraItens } from './pq';
+import { avaliar, bdiDaPlanilha, contarZerados, destinosIniciais, paraItens } from './pq';
 
 const PADRAO = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'prov', 'hh', 'pacote', 'tipo', 'orig', 'moeda', 'preco', 'bdi', 'bdiv', 'base', 'trib', 'parc', 'ger', 'chk']);
 const SIMPLES = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'moeda', 'preco', 'bdi', 'base', 'parc', 'ger', 'chk']);
@@ -68,6 +68,17 @@ describe('leitura de PQ com cabeçalho', async () => {
     expect(a).toMatchObject({ titulo: false, qtd: 1, un: 'vb', area: '22', subarea: '2200', tipo: 'C', pqdoc: 'PQ-001' });
     expect(itens[4].qtd).toBe(12.5);
     expect(JSON.stringify(itens)).not.toContain('undefined');
+  });
+
+  it('quantidade zero ou vazia: opção de não importar (Nº continua sem buracos)', () => {
+    const q = { ...p, linhas: p.linhas.map((l, i) => (i === 2 ? { ...l, valores: { ...l.valores, [p.colunas.find(c => c.auto === 'qtd')!.i]: { txt: '0', raw: 0 } } } : l)) };
+    const av = avaliar(q, dest, PADRAO);
+    expect(contarZerados(q, dest, av)).toBe(1);
+    const com = paraItens(q, dest, av, { incluirTitulos: true, numeroPq: '', seqInicial: 1, novoId });
+    const sem = paraItens(q, dest, av, { incluirTitulos: true, numeroPq: '', seqInicial: 1, novoId, incluirZerados: false });
+    expect(sem).toHaveLength(com.length - 1);
+    expect(sem.every(i => i.titulo || i.qtd)).toBe(true);
+    expect(sem.map(i => i.seq)).toEqual(sem.map((_, k) => k + 1));
   });
 
   it('sem incluir títulos, só os itens entram', () => {

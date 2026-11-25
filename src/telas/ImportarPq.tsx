@@ -4,7 +4,7 @@ import { Dialogo, plural, useAcao } from '../app/ui';
 import { baixarArquivo, excluirItensDaRevisao, inserirItens, listarArquivos, type Arquivo, type ItemPos } from '../dados/api';
 import { COLUNAS, coluna } from '../dominio/colunas';
 import { lerExcel, type AbaLida } from '../dominio/excel';
-import { avaliar, destinosIniciais, paraItens, type SituacaoColuna } from '../dominio/pq';
+import { avaliar, contarZerados, destinosIniciais, paraItens, type SituacaoColuna } from '../dominio/pq';
 
 const TIPOS_PQ = ['Planilha de quantidades', 'PX anterior'];
 const SIT: Record<SituacaoColuna, [string, string]> = {
@@ -18,7 +18,7 @@ const SIT: Record<SituacaoColuna, [string, string]> = {
 
 export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onImportado }: {
   empresaId: string; revisaoId: string; modelo: Set<string>; itens: ItemPos[];
-  onFechar: () => void; onImportado: () => void;
+  onFechar: () => void; onImportado: (novos: ItemPos[], anteriores: ItemPos[] | null) => void;
 }) {
   const acao = useAcao();
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
@@ -27,6 +27,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
   const [aba, setAba] = useState(0);
   const [destinos, setDestinos] = useState<(string | null)[]>([]);
   const [titulos, setTitulos] = useState(true);
+  const [zerados, setZerados] = useState(false);   // itens com quantidade zero ou vazia: não importar (padrão)
   const [numeroPq, setNumeroPq] = useState('');
   const [modo, setModo] = useState<'acrescentar' | 'substituir'>('acrescentar');
   const [lendo, setLendo] = useState(false);
@@ -49,8 +50,9 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
   const planilha = abas?.[aba]?.planilha;
   const av = useMemo(() => (planilha ? avaliar(planilha, destinos, modelo) : null), [planilha, destinos, modelo]);
   const previa = useMemo(() => (planilha && av
-    ? paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: 1, novoId: () => '', bdis })
-    : []), [planilha, destinos, av, titulos, numeroPq, bdis]);
+    ? paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: 1, novoId: () => '', bdis, incluirZerados: zerados })
+    : []), [planilha, destinos, av, titulos, numeroPq, bdis, zerados]);
+  const nZerados = useMemo(() => (planilha && av ? contarZerados(planilha, destinos, av) : 0), [planilha, destinos, av]);
   const entradas = COLUNAS.filter(c => c.t === 'in');
 
   async function importar() {
@@ -59,14 +61,14 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
     const substituir = modo === 'substituir';
     const seq0 = substituir ? 1 : Math.max(0, ...itens.map(i => i.seq)) + 1;
     const pos0 = substituir ? 0 : Math.max(0, ...itens.map(i => i.posicao));
-    const novos = paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: seq0, novoId: () => crypto.randomUUID(), bdis })
+    const novos = paraItens(planilha, destinos, av, { incluirTitulos: titulos, numeroPq, seqInicial: seq0, novoId: () => crypto.randomUUID(), bdis, incluirZerados: zerados })
       .map((it, i) => ({ ...it, posicao: pos0 + i + 1 }));
     const okk = await acao(async () => {
       if (substituir) await excluirItensDaRevisao(revisaoId);
       await inserirItens(empresaId, revisaoId, novos);
     }, `${plural(novos.filter(i => !i.titulo).length, 'item importado', 'itens importados')}${titulos ? ` e ${plural(novos.filter(i => i.titulo).length, 'título', 'títulos')}` : ''}.`);
     setGravando(false);
-    if (okk) onImportado();
+    if (okk) onImportado(novos, substituir ? itens : null);
   }
 
   return (
@@ -136,6 +138,11 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
             </label>
             <label className="row"><input type="checkbox" checked={titulos} onChange={e => setTitulos(e.target.checked)} />
               Importar também as linhas de título ({av.titulos})</label>
+            {nZerados > 0 && (
+              <label className="row" title="Itens cuja quantidade é zero ou está vazia na planilha">
+                <input type="checkbox" checked={zerados} onChange={e => setZerados(e.target.checked)} />
+                Importar linhas com quantidade zero ou vazia ({nZerados})</label>
+            )}
           </div>
           <div className="row">
             <label className="row"><input type="radio" checked={modo === 'acrescentar'} onChange={() => setModo('acrescentar')} />Acrescentar no fim, na ordem da PQ</label>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, useAviso, usdCurto } from '../app/ui';
 import {
-  atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
+  atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirItens, excluirPx, inserirItens, lerPx, listarItens,
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, niveisTitulos, totais } from '../dominio/calculo';
@@ -110,13 +110,80 @@ export function EditorPx() {
   const atalhoCheck = (k: keyof typeof ROT_CHECK) => filtrar('chk', chkAtivo === ROT_CHECK[k] ? null : { tipo: 'valores', valores: [ROT_CHECK[k]] });
 
   // --------------------------------------------------------------- edição
+  // --------------------------------------------------------------- desfazer / refazer (até 3 ações)
+  interface Passo { rotulo: string; desfazer: () => Promise<unknown>; refazer: () => Promise<unknown> }
+  const [hist, setHist] = useState<{ antes: Passo[]; depois: Passo[] }>({ antes: [], depois: [] });
+  const [ocupado, setOcupado] = useState(false);
+  const LIMITE_HIST = 3;
+  const registrar = (p: Passo) => setHist(h => ({ antes: [...h.antes, p].slice(-LIMITE_HIST), depois: [] }));
+  useEffect(() => { setHist({ antes: [], depois: [] }); }, [id, revAtual?.id]);
+  async function voltar(dir: 'desfazer' | 'refazer') {
+    const pilha = dir === 'desfazer' ? hist.antes : hist.depois;
+    const passo = pilha[pilha.length - 1];
+    if (!passo || ocupado) return;
+    setOcupado(true);
+    const okk = await acao(() => passo[dir](), `${dir === 'desfazer' ? 'Desfeito' : 'Refeito'}: ${passo.rotulo}.`);
+    setOcupado(false);
+    if (!okk) return;
+    setHist(h => dir === 'desfazer'
+      ? { antes: h.antes.slice(0, -1), depois: [...h.depois, passo].slice(-LIMITE_HIST) }
+      : { antes: [...h.antes, passo].slice(-LIMITE_HIST), depois: h.depois.slice(0, -1) });
+    if (px) atualizarPx(px.id, {}).catch(() => {});
+  }
+  // Ctrl+Z / Ctrl+Y (fora dos campos de texto, que têm o próprio desfazer)
+  const voltarRef = useRef(voltar); voltarRef.current = voltar;
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const alvo = e.target as HTMLElement;
+      if (alvo.closest('input, textarea, select, [contenteditable]')) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); voltarRef.current('desfazer'); }
+      else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); voltarRef.current('refazer'); }
+    };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, []);
+
+  const valorTxt = (k: string, v: unknown) => {
+    if (['bdi', 'fnac', 'fint', 'tribLigados', 'origem', 'tipo', 'orig', 'moeda'].includes(k)) return '';
+    if (v === null || v === undefined || v === '') return 'vazio';
+    if (typeof v === 'number') return nf(v, Number.isInteger(v) ? 0 : 2);
+    const t = String(v); return t.length > 24 ? t.slice(0, 24) + '…' : t;
+  };
+  /** Grava um campo do item (tela + banco), sem registrar no histórico. */
+  async function gravarCampo(itemId: string, k: string, v: unknown) {
+    setItens(l => l.map(i => (i.id === itemId ? { ...i, [k]: v } : i)));
+    await atualizarItem(itemId, { [k]: v });
+  }
   async function salvarCampo(itemId: string, k: string, v: unknown) {
     const antes = itens.find(i => i.id === itemId);
-    if (!antes || (antes as unknown as Record<string, unknown>)[k] === v) return;
+    const velho = antes ? (antes as unknown as Record<string, unknown>)[k] : undefined;
+    if (!antes || velho === v) return;
     setItens(l => l.map(i => (i.id === itemId ? { ...i, [k]: v } : i)));
     const okk = await acao(() => atualizarItem(itemId, { [k]: v }));
-    if (!okk) setItens(l => l.map(i => (i.id === itemId ? antes : i)));
-    else if (px) atualizarPx(px.id, {}).catch(() => {});
+    if (!okk) { setItens(l => l.map(i => (i.id === itemId ? antes : i))); return; }
+    if (px) atualizarPx(px.id, {}).catch(() => {});
+    const nome = k === 'titulo' ? (v ? 'Virar título' : 'Virar item') : k === 'tribLigados' ? 'Tributo ligado/desligado' : todas.find(c => c.k === k)?.h ?? k;
+    const de = valorTxt(k, velho), para = valorTxt(k, v);
+    registrar({
+      rotulo: `${nome} da linha ${antes.seq}${k !== 'titulo' && (de || para) ? ` (${de} → ${para})` : ''}`,
+      desfazer: () => gravarCampo(itemId, k, velho), refazer: () => gravarCampo(itemId, k, v),
+    });
+  }
+
+  const porPosicao = (l: ItemPos[]) => [...l].sort((a, b) => a.posicao - b.posicao);
+  /** Recoloca itens (mesmo id e posição) na tela e no banco. */
+  async function reporItens(lista: ItemPos[]) {
+    if (!empresa || !revAtual) return;
+    await inserirItens(empresa.id, revAtual.id, lista);
+    const ids = new Set(lista.map(i => i.id));
+    setItens(l => porPosicao([...l.filter(i => !ids.has(i.id)), ...lista]));
+  }
+  async function tirarItens(ids: string[]) {
+    await excluirItens(ids);
+    const s2 = new Set(ids);
+    setItens(l => l.filter(i => !s2.has(i.id)));
   }
 
   async function inserirItem() {
@@ -126,12 +193,29 @@ export function EditorPx() {
     const novo: ItemPos = { ...itemVazio(crypto.randomUUID(), Math.max(0, ...itens.map(i => i.seq)) + 1), posicao: b === undefined ? a + 1 : (a + b) / 2 };
     if (await acao(() => inserirItens(empresa.id, revAtual.id, [novo]))) {
       setItens(l => [...l.slice(0, idx + 1), novo, ...l.slice(idx + 1)]); setSel(novo.id);
+      registrar({ rotulo: `Inserir item (linha ${novo.seq})`, desfazer: () => tirarItens([novo.id]), refazer: () => reporItens([novo]) });
     }
   }
 
   async function apagarItem(itemId: string) {
     setPerguntar(null);
-    if (await acao(() => excluirItem(itemId))) setItens(l => l.filter(i => i.id !== itemId));
+    const copia = itens.find(i => i.id === itemId);
+    if (!copia) return;
+    if (await acao(() => excluirItem(itemId))) {
+      setItens(l => l.filter(i => i.id !== itemId));
+      registrar({ rotulo: `Excluir a linha ${copia.seq}`, desfazer: () => reporItens([copia]), refazer: () => tirarItens([itemId]) });
+    }
+  }
+
+  /** Depois de importar PQ: registra para poder desfazer (acrescentar: tira as novas; substituir: volta as anteriores). */
+  function importado(novos: ItemPos[], anteriores: ItemPos[] | null) {
+    setImportar(false);
+    carregar();
+    registrar({
+      rotulo: `Importar PQ (${plural(novos.length, 'linha', 'linhas')})`,
+      desfazer: async () => { await tirarItens(novos.map(i => i.id)); if (anteriores?.length) await reporItens(anteriores); },
+      refazer: async () => { if (anteriores?.length) await tirarItens(anteriores.map(i => i.id)); await reporItens(novos); },
+    });
   }
 
   async function emitir() {
@@ -141,12 +225,19 @@ export function EditorPx() {
   }
 
   /** Insere ou exclui uma coluna desta PX (para todos). Os valores dos itens ficam guardados. */
+  async function gravarColunas(lista: string[]) {
+    if (!px) return;
+    setPx(x => (x ? { ...x, colunas: lista } : x));
+    await atualizarPx(px.id, { colunas: lista });
+  }
   async function mudarColuna(k: string, incluir: boolean) {
     if (!px) return;
     const nova = todas.map(c => c.k).filter(c => (c === k ? incluir : modelo.has(c)) || OBRIGATORIAS.includes(c));
     const antes = px;
     setPx({ ...px, colunas: nova });
-    if (!(await acao(() => atualizarPx(px.id, { colunas: nova }), incluir ? 'Coluna inserida.' : 'Coluna excluída.'))) setPx(antes);
+    if (!(await acao(() => atualizarPx(px.id, { colunas: nova }), incluir ? 'Coluna inserida.' : 'Coluna excluída.'))) { setPx(antes); return; }
+    const nome = todas.find(c => c.k === k)?.h ?? k;
+    registrar({ rotulo: `${incluir ? 'Inserir' : 'Excluir'} a coluna ${nome}`, desfazer: () => gravarColunas(antes.colunas), refazer: () => gravarColunas(nova) });
   }
 
   async function exportar() {
@@ -299,6 +390,20 @@ export function EditorPx() {
       <div className="tools">
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
+        {editavel && (
+          <span className="desfazer-grupo">
+            <button className="btn icone" aria-label="Desfazer" disabled={!hist.antes.length || ocupado} onClick={() => voltar('desfazer')}
+              title={hist.antes.length ? `Desfazer: ${hist.antes[hist.antes.length - 1].rotulo} (Ctrl+Z)` : 'Nada para desfazer'}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></svg>
+              {hist.antes.length > 0 && <small>{hist.antes.length}</small>}
+            </button>
+            <button className="btn icone" aria-label="Refazer" disabled={!hist.depois.length || ocupado} onClick={() => voltar('refazer')}
+              title={hist.depois.length ? `Refazer: ${hist.depois[hist.depois.length - 1].rotulo} (Ctrl+Y)` : 'Nada para refazer'}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h3" /></svg>
+              {hist.depois.length > 0 && <small>{hist.depois.length}</small>}
+            </button>
+          </span>
+        )}
         <span className="spacer" />
         <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Gerenciar colunas</button>
         <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar PXs</button>
@@ -435,7 +540,7 @@ export function EditorPx() {
 
       {importar && revAtual && empresa && (
         <ImportarPq empresaId={empresa.id} revisaoId={revAtual.id} modelo={modelo} itens={itens}
-          onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); carregar(); }} />
+          onFechar={() => setImportar(false)} onImportado={importado} />
       )}
     </div>
   );

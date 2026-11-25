@@ -250,6 +250,8 @@ export interface OpcoesImportacao {
   seqInicial: number;     // próximo Nº da PX
   novoId: () => string;
   bdis?: Bdi[];           // BDIs cadastrados (para ligar a coluna BDI da planilha)
+  /** importar itens com quantidade zero ou vazia (padrão: sim). Só vale se a planilha tem coluna de quantidade. */
+  incluirZerados?: boolean;
 }
 
 /**
@@ -259,9 +261,10 @@ export interface OpcoesImportacao {
 export function paraItens(p: Planilha, destinos: (string | null)[], av: Avaliacao, o: OpcoesImportacao): Item[] {
   const out: Item[] = [];
   let seq = o.seqInicial;
+  const temQtd = p.colunas.some((_, i) => destinos[i] === 'qtd' && av.situacao[i] === 'pertinente');
   for (const l of p.linhas) {
     if (l.titulo && !o.incluirTitulos) continue;
-    const it = itemVazio(o.novoId(), seq++) as unknown as Record<string, unknown>;
+    const it = itemVazio(o.novoId(), seq) as unknown as Record<string, unknown>;
     p.colunas.forEach((sc, i) => {
       if (av.situacao[i] !== 'pertinente') return;
       const d = destinos[i]!;
@@ -271,7 +274,16 @@ export function paraItens(p: Planilha, destinos: (string | null)[], av: Avaliaca
     if (l.titulo) it.titulo = true;
     else it.pqdoc = o.numeroPq;
     it.bdi = l.titulo ? null : bdiDaPlanilha(it.bdi, o.bdis ?? []);
+    if (!l.titulo && temQtd && o.incluirZerados === false && !it.qtd) continue;   // quantidade zero ou vazia
+    seq++;
     out.push(it as unknown as Item);
   }
   return out;
+}
+
+/** Quantos itens (não títulos) têm quantidade zero ou vazia. 0 se a planilha não tem coluna de quantidade. */
+export function contarZerados(p: Planilha, destinos: (string | null)[], av: Avaliacao): number {
+  const i = p.colunas.findIndex((_, k) => destinos[k] === 'qtd' && av.situacao[k] === 'pertinente');
+  if (i < 0) return 0;
+  return p.linhas.filter(l => !l.titulo && !converter(l.valores[p.colunas[i].i], 'qtd')).length;
 }

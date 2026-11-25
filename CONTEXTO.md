@@ -65,6 +65,12 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - Na PX: cartão compacto (fase · classe, "% firme", selo) que abre a página Maturidade. A página lista todas as PX por
   cliente/projeto e mostra o cartão completo (barra com a meta, valor por origem). Excel: coluna e quadros no Resumo.
 
+### Desfazer / Refazer (PX)
+- Botões ↶ ↷ na barra (e Ctrl+Z / Ctrl+Y fora dos campos de texto): até **3 ações** para trás e de volta até a última.
+  Ação nova depois de desfazer apaga o "refazer". Entram: editar célula (inclusive listas e tributos), inserir/excluir
+  item, virar título/item, inserir/excluir coluna e importar PQ (acrescentar: tira as novas; substituir: volta as
+  anteriores). Não entram: emitir revisão e mudanças fora da PX. O histórico zera ao sair/recarregar a PX.
+
 ### Grade
 - Ordem das linhas = ordem da PQ/importação (nunca reordenar pelo Item PQ; números repetidos são mantidos).
 - **Linhas de título**: só Nº, Item PQ e Descrição; botão "Virar título/Virar item" sem perder valores.
@@ -115,6 +121,7 @@ US$       = valores em R$ ÷ câmbio do dólar
 ### Importar PQ (da Biblioteca)
 - Lê `.xlsx` real (ExcelJS; `.xls` antigo não é lido), escolhe a aba, detecta o cabeçalho ou deduz colunas pelo
   conteúdo; avalia compatibilidade com o modelo; títulos ("0", "-", vazio e sem unidade) opcionais;
+  itens com quantidade zero ou vazia **não entram por padrão** (opção "Importar linhas com quantidade zero ou vazia (N)");
   "Documento de Origem" vem do nome do arquivo; modos acrescentar no fim ou substituir.
 
 ### Exportar Excel

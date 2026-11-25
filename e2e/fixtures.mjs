@@ -23,4 +23,11 @@ const wm = mod.addWorksheet('Modelo');
 wm.addRow(['MODELO DE PX DO CLIENTE']);
 wm.addRow(['Item', 'Descrição', 'Unid', 'Quantidade', 'Moeda', 'Preço unitário']);
 await mod.xlsx.writeFile(`${dir}/Modelo-Cliente.xlsx`);
+// PQ com quantidades zero e vazia (opção de não importar) — usada no roteiro desfazer
+const z = new ExcelJS.Workbook();
+const wz = z.addWorksheet('PQ');
+wz.addRow(['ITEM', 'DESCRIÇÃO', 'UNID', 'QUANTIDADE']);
+[['1.1', 'OBRA', '', null], ['1.1.1', 'Item A', 'un', 2], ['1.1.2', 'Item B zerado', 'un', 0], ['1.1.3', 'Item C sem quantidade', 'un', null], ['1.1.4', 'Item D', 'm', 5]]
+  .forEach(l => wz.addRow(l));
+await z.xlsx.writeFile(`${dir}/PQ-Zerados.xlsx`);
 console.log('planilhas de teste geradas em', dir);

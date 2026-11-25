@@ -501,3 +501,12 @@ table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 .mat-card a.btn,.kpi.moldura.maturidade{text-decoration:none}
 .mat-kpi-linha{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .kpi.moldura.maturidade .mat-kpi-linha .mat-selo{margin-top:0}
+
+/* ---------- desfazer / refazer ---------- */
+.desfazer-grupo{display:inline-flex;gap:4px;margin-left:4px;padding-left:10px;border-left:1px solid var(--line)}
+.btn.icone{position:relative;width:38px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.btn.icone svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.icone small{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font:600 10px/16px var(--mono);text-align:center;padding:0 3px}
+.btn.icone:disabled{opacity:.4;cursor:default}
+.desfazer-grupo{align-self:stretch;align-items:stretch}
+.btn.icone{width:40px;min-height:34px;align-self:stretch}
