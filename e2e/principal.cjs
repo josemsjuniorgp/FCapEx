@@ -98,20 +98,50 @@ const S = process.argv[2];
     await p.locator('table.grid tbody tr').nth(1).getByText('OK', { exact: true }).waitFor();
     await p.screenshot({ path: `${S}/shots/4-grade.png` });
   });
-  await passo('caixa de grupos: hierarquia, busca e limpar filtro', async () => {
+  await passo('filtros por coluna (estilo Excel): condição, lista de valores, etiquetas, guardados e atalho do Check', async () => {
     const linhas = () => p.locator('table.grid tbody tr').count();
-    await p.locator('.grupo-botao').click();
-    await p.locator('.grupo-op', { hasText: 'CONSTRUÇÃO DE INSTALAÇÕES PROVISÓRIAS' }).waitFor();
-    await p.screenshot({ path: `${S}/shots/17-grupos.png` });
-    await p.locator('.grupo-op', { hasText: 'CONSTRUÇÃO DE INSTALAÇÕES PROVISÓRIAS' }).click();
-    if (await linhas() !== 4) throw new Error('grupo 1.1 mostrou ' + await linhas() + ' linhas (esperado título + 3 itens)');
-    await p.locator('.grupo-botao').click();
-    await p.getByPlaceholder('Buscar grupo por número ou nome…').fill('equip');
-    if (await p.locator('.grupo-op').count() !== 1) throw new Error('busca não filtrou');
-    await p.locator('.grupo-op', { hasText: 'EQUIPAMENTOS' }).click();
-    if (await linhas() !== 2) throw new Error('grupo 1.2 mostrou ' + await linhas());
-    await p.getByRole('button', { name: 'Mostrar todos os itens' }).click();
-    if (await linhas() !== 6) throw new Error('limpar filtro mostrou ' + await linhas());
+    if (await p.locator('.grupo-botao').count() || await p.getByPlaceholder(/Buscar descrição/).count()) throw new Error('filtros antigos ainda aparecem');
+    // Item PQ começa com 1.1 = grupo inteiro
+    await p.getByRole('button', { name: 'Filtrar Item PQ' }).click();
+    const j1 = p.getByRole('dialog', { name: 'Filtro de Item PQ' });
+    await j1.getByLabel('Condição').selectOption('comeca');
+    await j1.getByLabel('Texto da condição').fill('1.1');
+    await j1.getByRole('button', { name: 'OK', exact: true }).click();
+    if (await linhas() !== 4) throw new Error('Item PQ começa com 1.1 mostrou ' + await linhas() + ' linhas (esperado título + 3 itens)');
+    await p.locator('.filtro-chip', { hasText: 'começa com 1.1' }).waitFor();
+    // lista de valores do Tipo de Trabalho (com quantidades), considerando o outro filtro
+    await p.getByRole('button', { name: 'Filtrar Tipo de Trabalho' }).click();
+    const j2 = p.getByRole('dialog', { name: 'Filtro de Tipo de Trabalho' });
+    await j2.locator('.filtro-lista label').nth(1).waitFor();
+    const vals = (await j2.locator('.filtro-lista label').allInnerTexts()).map(x => x.replace(/\s+/g, ' ').trim());
+    if (vals.join('|') !== '(Selecionar tudo)|(C) Construção 3') throw new Error('valores: ' + vals.join('|'));
+    await j2.getByRole('button', { name: 'Cancelar' }).click();
+    await p.getByRole('button', { name: 'Tirar filtro de Item PQ' }).click();
+    if (await linhas() !== 6) throw new Error('tirar o filtro mostrou ' + await linhas());
+    await p.getByRole('button', { name: 'Filtrar Tipo de Trabalho' }).click();
+    await j2.getByText('(Selecionar tudo)').click();
+    await j2.locator('label', { hasText: '(F) Fornecimento' }).locator('input').check();
+    await p.screenshot({ path: `${S}/shots/17-filtro-lista.png` });
+    await j2.getByRole('button', { name: 'OK', exact: true }).click();
+    if (await linhas() !== 2) throw new Error('Tipo = Fornecimento mostrou ' + await linhas() + ' (esperado título 1.2 + 1 item)');
+    if (!(await p.getByRole('button', { name: 'Filtrar Tipo de Trabalho' }).getAttribute('class')).includes('on')) throw new Error('funil não ficou marcado');
+    await p.screenshot({ path: `${S}/shots/17b-filtro-ativo.png` });
+    // guardado ao recarregar
+    await p.reload(); await p.locator('.filtro-chip', { hasText: '(F) Fornecimento' }).waitFor();
+    if (await linhas() !== 2) throw new Error('filtro não ficou guardado');
+    // condição que não atende nada
+    await p.getByRole('button', { name: 'Filtrar Descrição' }).click();
+    const j3 = p.getByRole('dialog', { name: 'Filtro de Descrição' });
+    await j3.getByLabel('Condição').selectOption('contem'); await j3.getByLabel('Texto da condição').fill('não existe');
+    await j3.getByRole('button', { name: 'OK', exact: true }).click();
+    await p.getByText('Nenhum item atende aos filtros.').waitFor();
+    await p.locator('.filtros-ativos').getByRole('button', { name: 'Limpar todos os filtros' }).click();
+    if (await linhas() !== 6) throw new Error('limpar todos mostrou ' + await linhas());
+    // pílula do topo = atalho do filtro da coluna Check
+    await p.locator('.kpis .pill.p-warn').click();
+    await p.locator('.filtro-chip', { hasText: 'Check' }).filter({ hasText: 'Incompleto' }).waitFor();
+    await p.locator('.kpis .pill.p-warn').click();
+    if (await p.locator('.filtros-ativos').count()) throw new Error('atalho do Check não desligou');
   });
   await passo('grade ocupa a tela: página não cresce e barra horizontal fica no rodapé', async () => {
     const m = await p.evaluate(() => { const g = document.querySelector('.gridwrap'); const r = g.getBoundingClientRect();

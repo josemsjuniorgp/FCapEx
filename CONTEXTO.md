@@ -59,7 +59,13 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - **Linhas de título**: só Nº, Item PQ e Descrição; botão "Virar título/Virar item" sem perder valores.
   Cor por nível (pela numeração do Item PQ; o nível mais alto da PX é o 1º): tons de areia (neutro quente): 1º mais forte, 2º, 3º,
   4º mais claro (5º em diante = 4º); letra marrom-acinzentada. Mesmas cores no Excel. Cabeçalho da grade: grupos verde-escuro, colunas verde intermediário.
-- **Grupos**: caixa suspensa com busca; escolher um título inclui os subníveis (1.1 → 1.1.1…).
+- **Filtros por coluna (como no Excel)**: funil em cada coluna do cabeçalho; lista de valores com quantidades,
+  "(Vazias)" e Pesquisar; condições de texto (contém, começa com, termina com, é igual a) e de número (igual, maior,
+  menor, entre, 10 maiores, acima da média). Filtros de colunas diferentes se somam. "Item PQ começa com 1.1" = grupo
+  inteiro (substituiu a caixa de Grupo e a busca). Sem ordenar: a ordem da PQ nunca muda. Títulos-pai dos itens
+  filtrados continuam visíveis, com subtotal só do que está visível. Faixa "Filtros ativos" com etiquetas (✕) e
+  "Limpar todos"; pílulas ok/incompletas/com erro = atalho do filtro da coluna Check. Filtros guardados por PX no
+  navegador. "Aplicar BDI" vale para as linhas visíveis.
 - Colunas: Nº · Documento de Origem (antigo "Nº da PQ") · Item PQ · Área/Subárea/Ativo · Descrição · Unid ·
   Quantidade · Provisão · HH · Pacote (só texto) · Tipo de Trabalho (F, C, S, T, M) · Natureza (N, I) · Moeda ·
   Frete nacional + valor · Frete internacional + valor · Preço unit. · BDI (lista) · BDI (R$) · Preço total s/ trib. ·

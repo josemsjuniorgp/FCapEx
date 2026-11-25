@@ -63,7 +63,7 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await l.getByRole('button', { name: 'Virar título' }).click();
     await l.getByText('Título', { exact: true }).waitFor().catch(() => {});
     if (await l.locator('input.numi').count()) throw new Error('título ainda tem campo de quantidade');
-    await p.locator('.grupo-botao').click(); await p.locator('.grupo-op', { hasText: 'OBRAS CIVIS' }).waitFor(); await p.keyboard.press('Escape');
+    if (!(await l.getAttribute('class')).includes('title nv1')) throw new Error('linha não virou título de 1º nível: ' + await l.getAttribute('class'));
     await p.reload();
     await p.locator('table.grid tbody tr').first().getByRole('button', { name: 'Virar item' }).click();
     await p.waitForTimeout(500);

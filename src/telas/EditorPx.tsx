@@ -14,10 +14,11 @@ import type { Bdi, Frete, Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
 import { largurasAutomaticas } from '../app/larguras';
-import { FiltroGrupo } from './FiltroGrupo';
+import { FiltroColuna } from './FiltroColuna';
+import { aplicarFiltros, colunaNumerica, resumoFiltro, valoresDaColuna, type FiltroColuna as DefFiltro, type Filtros } from '../dominio/filtros';
 
 const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
-type Filtro = null | 'OK' | 'INCOMPLETO' | 'ERRO';
+const ROT_CHECK = { OK: 'OK', INCOMPLETO: 'Incompleto', ERRO: 'Erro de classificação' } as const;
 
 export function EditorPx() {
   const { id = '' } = useParams();
@@ -31,9 +32,11 @@ export function EditorPx() {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
-  const [grupo, setGrupo] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState<Filtro>(null);
-  const [busca, setBusca] = useState('');
+  // filtros por coluna (como no Excel), guardados por PX neste navegador
+  const [filtros, setFiltrosEstado] = useState<Filtros>({});
+  useEffect(() => { setFiltrosEstado(JSON.parse(localStorage.getItem('fcapex:filtros:' + id) || '{}')); }, [id]);
+  const setFiltros = useCallback((f: Filtros) => { setFiltrosEstado(f); localStorage.setItem('fcapex:filtros:' + id, JSON.stringify(f)); }, [id]);
+  const filtrar = (k: string, f: DefFiltro | null) => { const n = { ...filtros }; if (f) n[k] = f; else delete n[k]; setFiltros(n); };
   const [sel, setSel] = useState<string | null>(null);
   const [painel, setPainel] = useState<'dados' | 'colunas' | null>(null);
   const [importar, setImportar] = useState(false);
@@ -78,18 +81,32 @@ export function EditorPx() {
     const pref = t0?.item.replace(/\.$/, '');
     return new Set([id, ...(pref ? titulos.filter(t => t.item.replace(/\.$/, '').startsWith(pref + '.')).map(t => t.id) : [])]);
   }, [titulos]);
-  const alvo = useMemo(() => (grupo ? ramo(grupo) : null), [grupo, ramo]);
 
-  const visiveis = itens.filter(it => {
-    if (alvo && !alvo.has(grupos.get(it.id) ?? '')) return false;
-    if (filtro && !it.titulo && res.get(it.id)?.chk !== filtro) return false;
-    if (filtro && it.titulo) return false;
-    if (busca) {
-      const q = busca.toLowerCase();
-      return [it.desc, it.item, it.area, it.subarea, it.ativo, it.pacote, it.pqdoc].some(v => v.toLowerCase().includes(q));
+  // --------------------------------------------------------------- filtros
+  const colsModelo = useMemo(() => todas.filter(c => c.k === 'seq' || modelo.has(c.k)), [todas, modelo]);
+  const ctxFiltro = useMemo(() => ({ res, moedas, fretes: parametros?.fretes ?? [], bdis: parametros?.bdis ?? [] }), [res, moedas, parametros]);
+  const passa = useMemo(() => aplicarFiltros(itens, filtros, colsModelo, ctxFiltro), [itens, filtros, colsModelo, ctxFiltro]);
+  const visiveis = passa ? itens.filter(i => passa.has(i.id)) : itens;
+  const itensVis = visiveis.filter(i => !i.titulo);
+  const totalVis = itensVis.reduce((s2, i) => s2 + (res.get(i.id)?.ger || 0), 0);
+  /** Valores de uma coluna para a lista do filtro, considerando os filtros das outras colunas. */
+  const valoresPara = (k: string) => () => {
+    const outros = { ...filtros }; delete outros[k];
+    const p2 = aplicarFiltros(itens, outros, colsModelo, ctxFiltro);
+    return valoresDaColuna(colsModelo.find(c => c.k === k)!, p2 ? itens.filter(i => p2.has(i.id)) : itens, ctxFiltro);
+  };
+  /** Subtotal de cada título: soma dos itens visíveis dentro dele e dos subníveis. */
+  const subtotais = useMemo(() => {
+    const m = new Map<string, number>();
+    const vis = passa;
+    for (const ti of titulos) {
+      const r = ramo(ti.id);
+      m.set(ti.id, itens.reduce((s2, i) => (!i.titulo && (!vis || vis.has(i.id)) && r.has(grupos.get(i.id) ?? '') ? s2 + (res.get(i.id)?.ger || 0) : s2), 0));
     }
-    return true;
-  });
+    return m;
+  }, [itens, passa, res, grupos, ramo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chkAtivo = filtros.chk?.tipo === 'valores' && filtros.chk.valores.length === 1 ? filtros.chk.valores[0] : null;
+  const atalhoCheck = (k: keyof typeof ROT_CHECK) => filtrar('chk', chkAtivo === ROT_CHECK[k] ? null : { tipo: 'valores', valores: [ROT_CHECK[k]] });
 
   // --------------------------------------------------------------- edição
   async function salvarCampo(itemId: string, k: string, v: unknown) {
@@ -240,10 +257,9 @@ export function EditorPx() {
           <small>Total Geral Líquido (US$)</small><b>{usd ? usdCurto(t.liq / usd) : '—'}</b></div>
         <div className="kpi moldura neutro"><small>Itens</small><b>{itens.length - t.tit}</b></div>
         <div className="row">
-          <button className="pill p-ok" aria-pressed={filtro === 'OK'} onClick={() => setFiltro(filtro === 'OK' ? null : 'OK')}><i />{t.ok} ok</button>
-          <button className="pill p-warn" onClick={() => setFiltro(filtro === 'INCOMPLETO' ? null : 'INCOMPLETO')}><i />{t.inc} incompletas</button>
-          <button className="pill p-err" onClick={() => setFiltro(filtro === 'ERRO' ? null : 'ERRO')}><i />{t.err} com erro</button>
-          {filtro && <button className="linkbtn" onClick={() => setFiltro(null)}>limpar filtro</button>}
+          <button className="pill p-ok" aria-pressed={chkAtivo === ROT_CHECK.OK} title="Filtrar a coluna Check: OK" onClick={() => atalhoCheck('OK')}><i />{t.ok} ok</button>
+          <button className="pill p-warn" aria-pressed={chkAtivo === ROT_CHECK.INCOMPLETO} title="Filtrar a coluna Check: Incompleto" onClick={() => atalhoCheck('INCOMPLETO')}><i />{t.inc} incompletas</button>
+          <button className="pill p-err" aria-pressed={chkAtivo === ROT_CHECK.ERRO} title="Filtrar a coluna Check: Erro de classificação" onClick={() => atalhoCheck('ERRO')}><i />{t.err} com erro</button>
         </div>
         <span className="spacer" />
         <div className="cambio" aria-label="Câmbio">
@@ -263,13 +279,6 @@ export function EditorPx() {
         </div>
       </div>
       <div className="tools">
-        <FiltroGrupo valor={grupo} onEscolher={setGrupo} total={t.ger} totalItens={itens.length - t.tit}
-          opcoes={titulos.map(ti => {
-            const r = ramo(ti.id);
-            const membros = itens.filter(i => !i.titulo && r.has(grupos.get(i.id) ?? ''));
-            return { id: ti.id, item: ti.item, desc: ti.desc, n: membros.length, soma: membros.reduce((s2, i) => s2 + (res.get(i.id)?.ger || 0), 0) };
-          })} />
-        <input className="in" type="search" placeholder="Buscar descrição, item, área, pacote…" value={busca} onChange={e => setBusca(e.target.value)} />
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
         {editavel && modelo.has('bdi') && <button className="btn" aria-pressed={lote !== null} onClick={() => setLote(lote === null ? '' : null)}
@@ -289,11 +298,26 @@ export function EditorPx() {
             <option value="">- (sem BDI)</option>
             {parametros.bdis.map(b => <option key={b.id} value={b.id}>{rotuloBdi(b)}</option>)}
           </select>
-          <span>às <b>{plural(visiveis.filter(i => !i.titulo).length, 'linha visível', 'linhas visíveis')}</b></span>
-          <span className="note">Use o filtro de grupo, a busca ou o filtro do Check para escolher as linhas.</span>
+          <span>às <b>{plural(itensVis.length, 'linha visível', 'linhas visíveis')}</b></span>
+          <span className="note">Use os filtros das colunas (funil no cabeçalho) para escolher as linhas.</span>
           <span className="spacer" />
           <button className="btn" onClick={() => setLote(null)}>Cancelar</button>
-          <button className="btn primary" disabled={!visiveis.some(i => !i.titulo)} onClick={aplicarLote}>Aplicar</button>
+          <button className="btn primary" disabled={!itensVis.length} onClick={aplicarLote}>Aplicar</button>
+        </div>
+      )}
+      {passa && (
+        <div className="filtros-ativos" role="region" aria-label="Filtros ativos">
+          <span className="note"><b>Filtros ativos</b> · mostrando {itensVis.length} de {plural(itens.length - t.tit, 'item', 'itens')} ({brl(totalVis)})</span>
+          {Object.entries(filtros).map(([k, f]) => {
+            const c = todas.find(x => x.k === k);
+            return (
+              <span key={k} className={'filtro-chip' + (colsModelo.some(x => x.k === k) ? '' : ' fora')} title={colsModelo.some(x => x.k === k) ? '' : 'Esta coluna não está na PX: o filtro não vale'}>
+                {c?.h ?? k}: <b>{resumoFiltro(f)}</b>
+                <button aria-label={`Tirar filtro de ${c?.h ?? k}`} onClick={() => filtrar(k, null)}>✕</button>
+              </span>
+            );
+          })}
+          <button className="linkbtn" onClick={() => setFiltros({})}>Limpar todos os filtros</button>
         </div>
       )}
       {perguntar === 'emitir' && revAtual && (
@@ -319,6 +343,7 @@ export function EditorPx() {
                   <th key={c.k} className={c.k === 'seq' ? 'sticky c1' : ''}
                     title={(c.t === 'calc' || c.t === 'tax') && c.f ? 'Fórmula: ' + c.f : ''}>
                     {c.h}{(c.t === 'calc' || c.t === 'tax') && <span className="fx">fx</span>}
+                    <FiltroColuna c={c} numerica={colunaNumerica(c)} ativo={filtros[c.k]} valores={valoresPara(c.k)} onAplicar={f => filtrar(c.k, f)} />
                     {c.k !== 'seq' && (
                       <span className={'redim' + (largMan[c.k] ? ' manual' : '')} role="separator" aria-orientation="vertical"
                         aria-label={`Ajustar largura de ${c.h}`} title="Arraste para ajustar a largura · duplo clique volta ao automático"
@@ -339,6 +364,7 @@ export function EditorPx() {
                         moedas={moedas.map(m => [m.codigo, `${m.nome} (${m.simbolo})`] as [string, string])}
                         simbolo={moedas.find(m => m.codigo === it.moeda)?.simbolo ?? ''}
                         dica={c.k === 'chk' ? detalheCheck(it, r, parametros, modelo) : undefined}
+                        subtotal={it.titulo && c.k === 'ger' ? subtotais.get(it.id) : undefined}
                         onSalvar={v => salvarCampo(it.id, c.t === 'tax' ? 'tribLigados' : c.k, v)} />
                     ))}
                     {editavel && (
@@ -358,6 +384,9 @@ export function EditorPx() {
             </tbody>
           </table>
           {!itens.length && <div style={{ padding: 24 }} className="note">Esta PX ainda não tem itens. Use <b>Importar PQ</b> ou <b>Inserir item</b>.</div>}
+          {!!itens.length && passa && !itensVis.length && (
+            <div style={{ padding: 24 }} className="note">Nenhum item atende aos filtros. <button className="linkbtn" onClick={() => setFiltros({})}>Limpar todos os filtros</button></div>
+          )}
         </div>
 
         <aside className={'side-panel' + (painel ? ' on' : '')}>
@@ -422,8 +451,8 @@ function agruparCabecalho(cols: Coluna[], extra: boolean): ReactNode[] {
 }
 
 // ------------------------------------------------------------------ célula da grade
-function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, bdis }: {
-  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[]; bdis: Bdi[];
+function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, bdis, subtotal }: {
+  c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[]; bdis: Bdi[]; subtotal?: number;
   dica?: string; onSalvar: (v: unknown) => void;
 }) {
   if (c.k === 'seq') return <td className="sticky c1 mono">{it.seq}</td>;
@@ -434,6 +463,7 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, b
         ? <td className="in-c"><Entrada valor={(it as unknown as Record<string, string>)[c.k]} onSalvar={onSalvar} /></td>
         : <td className="txt">{(it as unknown as Record<string, string>)[c.k]}</td>;
     }
+    if (subtotal !== undefined) return <td className="calc subtot" title="Subtotal do grupo (itens visíveis)">{nf(subtotal, 2)}</td>;
     return <td />;
   }
   if (c.t === 'tax') {

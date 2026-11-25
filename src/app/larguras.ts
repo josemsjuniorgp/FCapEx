@@ -9,6 +9,7 @@ import { bdiFinal } from '../dominio/calculo';
 const FONTE = '13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 const FONTE_CAB = '600 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 const PADDING = 18;        // padding horizontal da célula + folga
+const FUNIL = 26;          // botão de filtro no cabeçalho
 const SETA_SELECT = 30;    // seta da caixa de escolha
 const CAIXINHA = 26;       // caixinha de ligar/desligar tributo
 
@@ -68,7 +69,7 @@ export function largurasAutomaticas(colunas: Coluna[], cx: ContextoLargura): Rec
   const out: Record<string, number> = {};
   for (const c of colunas) {
     if (c.k === 'seq') { out[c.k] = 56; continue; }
-    const cab = medir(c.h, FONTE_CAB) + PADDING + (c.t === 'calc' || c.t === 'tax' ? 22 : 0);
+    const cab = medir(c.h, FONTE_CAB) + PADDING + (c.t === 'calc' || c.t === 'tax' ? 22 : 0) + FUNIL;
     let maior = 0;
     for (const it of cx.itens) {
       const t = textoDaCelula(c, it, cx.res.get(it.id), cx);
