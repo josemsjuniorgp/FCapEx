@@ -48,8 +48,8 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - **BDI final, sem tributos** (eles já são calculados à parte): `(1 + AC + S + G + R + personalizadas) × (1 + DF) × (1 + L) − 1`.
 - Cartão por BDI com BDI final, exemplo em R$, "usado em N linhas", Duplicar, Excluir (linhas ficam "-").
 - Na PX, a coluna BDI é uma **lista**: um BDI cadastrado ou "-" (sem BDI). Não existe mais % digitado.
-  Sem padrão por Tipo de Trabalho: linha nova nasce "-". Botão **Aplicar BDI** aplica a todas as linhas visíveis
-  (use grupo, busca ou filtro do Check). Coluna "BDI (R$)" ao lado.
+  Sem padrão por Tipo de Trabalho: linha nova nasce "-". BDI escolhido **linha a linha** (o botão "Aplicar BDI" em lote
+  foi retirado). Coluna "BDI (R$)" ao lado.
 - Importar PQ: coluna BDI da planilha é ligada ao cadastro pelo nome ou pelo mesmo % final; sem correspondência fica "-".
 - Emitir revisão guarda a **foto** dos BDIs usados (`revisoes.bdis_congelados`): alterar um BDI depois não muda a
   revisão emitida (Comparar usa a foto). BDIs digitados antes desta mudança viraram "BDI x% (convertido)" (tudo em Lucro).
@@ -64,8 +64,12 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
   menor, entre, 10 maiores, acima da média). Filtros de colunas diferentes se somam. "Item PQ começa com 1.1" = grupo
   inteiro (substituiu a caixa de Grupo e a busca). Sem ordenar: a ordem da PQ nunca muda. Títulos-pai dos itens
   filtrados continuam visíveis, com subtotal só do que está visível. Faixa "Filtros ativos" com etiquetas (✕) e
-  "Limpar todos"; pílulas ok/incompletas/com erro = atalho do filtro da coluna Check. Filtros guardados por PX no
-  navegador. "Aplicar BDI" vale para as linhas visíveis.
+  "Limpar todos" (sem números); pílulas ok/incompletas/com erro = atalho do filtro da coluna Check. Filtros guardados
+  por PX no navegador. Com filtro ativo aparece uma 2ª linha de indicadores **"FILTRADO"** em verde-petróleo
+  (Bruto/Líquido R$ e US$, Itens, ok/incompletas/erro) só das linhas filtradas, com "% do projeto"; a linha do projeto
+  fica acima.
+- Barra da PX: Inserir item · Importar PQ … Gerenciar colunas · Comparar PXs (compara revisões) · Exportar Excel ·
+  Emitir nova revisão · Dados da PX.
 - Colunas: Nº · Documento de Origem (antigo "Nº da PQ") · Item PQ · Área/Subárea/Ativo · Descrição · Unid ·
   Quantidade · Provisão · HH · Pacote (só texto) · Tipo de Trabalho (F, C, S, T, M) · Natureza (N, I) · Moeda ·
   Frete nacional + valor · Frete internacional + valor · Preço unit. · BDI (lista) · BDI (R$) · Preço total s/ trib. ·
