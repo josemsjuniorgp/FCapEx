@@ -6,10 +6,10 @@ import { COLUNAS, coluna } from '../dominio/colunas';
 import { lerExcel, type AbaLida } from '../dominio/excel';
 import { avaliar, contarZerados, destinosIniciais, paraItens, type SituacaoColuna } from '../dominio/pq';
 
-const TIPOS_PQ = ['Planilha de quantidades', 'PX anterior'];
+const TIPOS_PQ = ['Planilha de quantidades', 'Mapa anterior'];
 const SIT: Record<SituacaoColuna, [string, string]> = {
   pertinente: ['p-ok', 'Pertinente ao modelo'],
-  fora_modelo: ['p-warn', 'Fora do modelo desta PX: ignorada'],
+  fora_modelo: ['p-warn', 'Fora do modelo deste Mapa: ignorada'],
   sem_correspondencia: ['p-mut', 'Sem correspondência: ignorada'],
   ignorada: ['p-mut', 'Ignorada por você'],
   calculada: ['p-info', 'Calculada no sistema: não importa'],
@@ -105,7 +105,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
             <b className="pct">{av.compatibilidade}%</b>
             <span className={'pill ' + (av.compatibilidade >= 70 ? 'p-ok' : av.compatibilidade >= 40 ? 'p-warn' : 'p-err')}>
               {av.compatibilidade >= 70 ? 'Compatível' : av.compatibilidade >= 40 ? 'Parcialmente compatível' : 'Pouco compatível'}</span>
-            <span className="note">das colunas de entrada do modelo desta PX são preenchidas pelo arquivo.</span>
+            <span className="note">das colunas de entrada do modelo deste Mapa são preenchidas pelo arquivo.</span>
           </div>
           {av.faltandoObrigatorias.length > 0 && (
             <div className="banner">Colunas obrigatórias que o arquivo não traz (entram em branco e aparecem como pendência):{' '}
@@ -114,7 +114,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
           {av.bloqueios.map(b => <div key={b} className="confirm">{b}</div>)}
           <div className="scroll-x">
             <table className="t">
-              <thead><tr><th>Coluna do arquivo</th><th>Destino na PX</th><th>Avaliação</th></tr></thead>
+              <thead><tr><th>Coluna do arquivo</th><th>Destino no Mapa</th><th>Avaliação</th></tr></thead>
               <tbody>
                 {planilha.colunas.map((sc, i) => (
                   <tr key={sc.i}>
@@ -146,7 +146,7 @@ export function ImportarPq({ empresaId, revisaoId, modelo, itens, onFechar, onIm
           </div>
           <div className="row">
             <label className="row"><input type="radio" checked={modo === 'acrescentar'} onChange={() => setModo('acrescentar')} />Acrescentar no fim, na ordem da PQ</label>
-            <label className="row"><input type="radio" checked={modo === 'substituir'} onChange={() => setModo('substituir')} />Substituir todos os itens da PX ({itens.length})</label>
+            <label className="row"><input type="radio" checked={modo === 'substituir'} onChange={() => setModo('substituir')} />Substituir todos os itens do Mapa ({itens.length})</label>
           </div>
           <strong>Prévia ({plural(previa.length, 'linha', 'linhas')})</strong>
           <div className="scroll-x">

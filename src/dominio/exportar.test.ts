@@ -29,7 +29,7 @@ const ITENS: Item[] = [
 ];
 const DADOS: DadosExportacao = {
   empresa: 'Engenharia & Cia', cliente: 'Siderúrgica Exemplo', projeto: 'Planta Piloto',
-  px: { codigo: 'PX-A1/0001', nome: 'Estimativa classe 3', modelo_nome: 'PX Padrão', colunas: COLUNAS.map(c => c.k) },
+  px: { codigo: 'PX-A1/0001', nome: 'Estimativa classe 3', modelo_nome: 'Mapa Padrão', colunas: COLUNAS.map(c => c.k) },
   revisao: 2, emEdicao: true, itens: ITENS, parametros: P,
   moedas: [{ codigo: 'BRL', nome: 'Real', simbolo: 'R$', cambio_brl: 1 }, { codigo: 'USD', nome: 'Dólar', simbolo: 'US$', cambio_brl: 5.2 }, { codigo: 'EUR', nome: 'Euro', simbolo: '€', cambio_brl: null }],
   geradoEm: new Date(2026, 10, 24, 10, 30),
@@ -53,17 +53,17 @@ const achar = (ws: ExcelJS.Worksheet, valor: string) => {
 
 describe('exportação para Excel', async () => {
   const wb = await abrir(DADOS);
-  const ws = wb.getWorksheet('PX')!;
+  const ws = wb.getWorksheet('Mapa')!;
   const cols = new Set(DADOS.px.colunas);
   const tot = totais(ITENS, P, cols);
 
   it('gera as 3 abas', () => {
-    expect(wb.worksheets.map(w => w.name)).toEqual(['PX', 'Resumo', 'Parâmetros']);
+    expect(wb.worksheets.map(w => w.name)).toEqual(['Mapa', 'Resumo', 'Parâmetros']);
   });
 
   it('cabeçalho do documento com empresa, cliente, projeto, código, revisão e modelo', () => {
     const t = texto(ws);
-    for (const v of ['ENGENHARIA & CIA', 'PLANILHA DE PREÇOS (PX)', 'Estimativa classe 3', 'Siderúrgica Exemplo', 'Planta Piloto', 'PX-A1/0001', 'Rev 2 (em edição)', 'PX Padrão'])
+    for (const v of ['ENGENHARIA & CIA', 'MAPA DE PREÇOS', 'Estimativa classe 3', 'Siderúrgica Exemplo', 'Planta Piloto', 'PX-A1/0001', 'Rev 2 (em edição)', 'Mapa Padrão'])
       expect(t).toContain(v);
     expect(t).toMatch(/EUR sem câmbio/);
   });
@@ -149,7 +149,7 @@ describe('exportação para Excel', async () => {
     const resumo = texto(wb.getWorksheet('Resumo')!);
     for (const v of ['POR BDI', 'BDI Obras Civis', '15,32%', 'sem BDI (-)']) expect(resumo).toContain(v);
     const par = texto(wb.getWorksheet('Parâmetros')!);
-    for (const v of ['BDIS USADOS NESTA PX', 'AC 4,00% · S 0,40% · G 0,40% · R 1,27% · DF 1,23% · L 7,40%', '(1 + AC + S + G + R']) expect(par).toContain(v);
+    for (const v of ['BDIS USADOS NESTE MAPA', 'AC 4,00% · S 0,40% · G 0,40% · R 1,27% · DF 1,23% · L 7,40%', '(1 + AC + S + G + R']) expect(par).toContain(v);
   });
 
   it('parâmetros usados no cálculo', () => {
@@ -159,20 +159,20 @@ describe('exportação para Excel', async () => {
 
   it('respeita as colunas da PX', async () => {
     const so = ['seq', 'desc', 'qtd', 'preco', 'ger', 'chk'];
-    const w = (await abrir({ ...DADOS, px: { ...DADOS.px, colunas: so } })).getWorksheet('PX')!;
+    const w = (await abrir({ ...DADOS, px: { ...DADOS.px, colunas: so } })).getWorksheet('Mapa')!;
     expect([1, 2, 3, 4, 5, 6].map(c => w.getCell(14, c).value)).toEqual(['Nº', 'Descrição', 'Quantidade', 'Preço unit.', 'Total geral (R$)', 'Check']);
     expect(w.getCell(14, 7).value).toBeNull();
   });
 
   it('PX sem itens também exporta', async () => {
-    const w = (await abrir({ ...DADOS, itens: [] })).getWorksheet('PX')!;
-    expect(texto(w)).toContain('Esta PX ainda não tem itens.');
+    const w = (await abrir({ ...DADOS, itens: [] })).getWorksheet('Mapa')!;
+    expect(texto(w)).toContain('Este Mapa ainda não tem itens.');
   });
 
   it('colunas de tributo: valor por linha, 0,00 quando desligado e total por tributo', async () => {
     const itens = ITENS.map(i => (i.id === 'i4' ? { ...i, tribLigados: { iss: false } } : i));
     const colunasPx = [...COLUNAS.map(c => c.k), 'tx:iss', 'tx:pis'];
-    const w = (await abrir({ ...DADOS, itens, px: { ...DADOS.px, colunas: colunasPx } })).getWorksheet('PX')!;
+    const w = (await abrir({ ...DADOS, itens, px: { ...DADOS.px, colunas: colunasPx } })).getWorksheet('Mapa')!;
     const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
     const iIss = cab.indexOf('ISS (R$)') + 1, iPis = cab.indexOf('PIS (R$)') + 1, iTrib = cab.indexOf('Tributos (R$)') + 1;
     expect(iPis).toBeGreaterThan(0); expect(iIss).toBeGreaterThan(iPis);       // na ordem dos tributos, antes do total
@@ -195,7 +195,7 @@ describe('exportação para Excel', async () => {
     ];
     const itens = ITENS.map(i => (i.id === 'i2' ? { ...i, fnac: 'fn', fint: 'fi' } : i));
     const d = { ...DADOS, itens, parametros: { ...P, fretes } };
-    const wb2 = await abrir(d); const w = wb2.getWorksheet('PX')!;
+    const wb2 = await abrir(d); const w = wb2.getWorksheet('Mapa')!;
     const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
     const col = (h: string) => cab.indexOf(h) + 1;
     expect(w.getCell(16, col('Frete nacional')).value).toBe('Rodoviário · MG');
@@ -212,7 +212,7 @@ describe('exportação para Excel', async () => {
   it('larguras pelo conteúdo: números cabem, Descrição longa quebra linha, colunas curtas estreitas', async () => {
     const longa = 'FORNECIMENTO E MONTAGEM DE ESTRUTURA METÁLICA PARA COBERTURA DO GALPÃO DE ARMAZENAMENTO, INCLUINDO TERÇAS, CONTRAVENTAMENTOS E PINTURA';
     const itens = ITENS.map(i => (i.id === 'i2' ? { ...i, desc: longa, qtd: 123456.78, preco: 98765.43 } : i));
-    const w = (await abrir({ ...DADOS, itens })).getWorksheet('PX')!;
+    const w = (await abrir({ ...DADOS, itens })).getWorksheet('Mapa')!;
     const cab: string[] = []; w.getRow(14).eachCell(c => cab.push(String(c.value)));
     const col = (h: string) => cab.indexOf(h) + 1;
     const larg = (h: string) => w.getColumn(col(h)).width!;

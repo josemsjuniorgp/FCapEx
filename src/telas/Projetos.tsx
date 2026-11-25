@@ -80,7 +80,7 @@ export function Projetos() {
                 <div className={'cli' + (cliente === c.id ? ' ativo' : '')}>
                   <button className="cli-btn" aria-pressed={cliente === c.id} onClick={() => setCliente(c.id)}>
                     <span className="avatar" aria-hidden="true">{iniciais(c.nome)}</span>
-                    <span className="cli-txt"><b>{c.nome}</b><small>{plural(ids.length, 'projeto', 'projetos')} · {nPx(ids)} PX</small></span>
+                    <span className="cli-txt"><b>{c.nome}</b><small>{plural(ids.length, 'projeto', 'projetos')} · {nPx(ids)} {nPx(ids) === 1 ? 'Mapa' : 'Mapas'}</small></span>
                   </button>
                   {ehAdmin && (
                     <button className="icone-btn" title="Excluir cliente" aria-label={`Excluir cliente ${c.nome}`} onClick={() => setPerguntar('c:' + c.id)}>
@@ -89,7 +89,7 @@ export function Projetos() {
                   )}
                 </div>
                 {perguntar === 'c:' + c.id && (
-                  <Confirmar msg={<>Excluir <b>{c.nome}</b> com {plural(ids.length, 'projeto', 'projetos')} e {nPx(ids)} PX?</>}
+                  <Confirmar msg={<>Excluir <b>{c.nome}</b> com {plural(ids.length, 'projeto', 'projetos')} e {nPx(ids)} {nPx(ids) === 1 ? 'Mapa' : 'Mapas'}?</>}
                     sim="Excluir cliente" onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirCliente(c.id), 'Cliente excluído.')} />
                 )}
               </div>
@@ -142,9 +142,9 @@ export function Projetos() {
                 <h2>{p.nome}</h2>
                 <span className="chip fase-chip" title="Fase e classe AACE do projeto (usadas na maturidade)">
                   {p.fase || 'fase não informada'}{p.classe ? ` · Classe ${p.classe}` : ' · sem classe'}</span>
-                <span className="note">{plural(lista.length, 'PX', 'PX')}</span><span className="spacer" />
+                <span className="note">{plural(lista.length, 'Mapa', 'Mapas')}</span><span className="spacer" />
                 {podeEditar && <button className="btn small" onClick={() => setEditProj({ id: p.id, nome: p.nome, fase: p.fase, classe: p.classe })}>Editar projeto</button>}
-                {podeEditar && <button className="btn small primary" onClick={() => setNovaPx(p.id)}>Nova PX</button>}
+                {podeEditar && <button className="btn small primary" onClick={() => setNovaPx(p.id)}>Novo Mapa de Preços</button>}
                 {podeEditar && <button className="btn small danger" onClick={() => setPerguntar('p:' + p.id)}>Excluir projeto</button>}
               </div>
               {editProj?.id === p.id && (
@@ -163,7 +163,7 @@ export function Projetos() {
                 </div>
               )}
               {perguntar === 'p:' + p.id && (
-                <Confirmar msg={<>Excluir o projeto <b>{p.nome}</b> e {plural(lista.length, 'PX', 'PX')}?</>} sim="Excluir projeto"
+                <Confirmar msg={<>Excluir o projeto <b>{p.nome}</b> e {plural(lista.length, 'Mapa', 'Mapas')}?</>} sim="Excluir projeto"
                   onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirProjeto(p.id), 'Projeto excluído.')} />
               )}
               <div className="cards">
@@ -183,8 +183,8 @@ export function Projetos() {
                         {t && !t.ok && !t.inc && !t.err && <span className="pill p-mut">Sem itens</span>}
                       </div>
                       {perguntar === 'x:' + x.id
-                        ? <Confirmar msg={<>Excluir a <b>{x.codigo}</b> e todas as revisões dela?</>} sim="Excluir PX"
-                            onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirPx(x.id), `${x.codigo} excluída.`)} />
+                        ? <Confirmar msg={<>Excluir o Mapa <b>{x.codigo}</b> e todas as revisões dele?</>} sim="Excluir Mapa"
+                            onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirPx(x.id), `Mapa ${x.codigo} excluído.`)} />
                         : <div className="row"><span className="note">Atualizada {dataHora(x.atualizado_em)}</span><span className="spacer" />
                             {podeEditar && <button className="btn small" onClick={() => setRenomear(x.id)}>Renomear</button>}
                             {podeEditar && <button className="btn small danger" onClick={() => setPerguntar('x:' + x.id)}>Excluir</button>}
@@ -192,7 +192,7 @@ export function Projetos() {
                     </article>
                   );
                 })}
-                {!lista.length && <span className="note">Nenhuma PX neste projeto.</span>}
+                {!lista.length && <span className="note">Nenhum Mapa neste projeto.</span>}
               </div>
             </article>
           );

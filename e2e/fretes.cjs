@@ -44,9 +44,9 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
   const lerCab = async () => { cab = (await p.locator('table.grid thead tr.h th').allInnerTexts()).map(x => x.replace(/fx$/, '').trim()); };
   await passo('PX nova já traz as 4 colunas de frete', async () => {
     await p.getByRole('link', { name: 'Projetos', exact: true }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-F-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste fretes');
-    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-F-01' }).waitFor();
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-F-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste fretes');
+    await p.getByRole('button', { name: 'Criar Mapa' }).click(); await p.locator('.px-cab', { hasText: 'PX-F-01' }).waitFor();
     await p.getByRole('button', { name: 'Inserir item' }).click();
     linha = p.locator('table.grid tbody tr').first(); await linha.waitFor(); await lerCab();
     for (const h of ['Frete nacional', 'Frete nacional (R$)', 'Frete internacional', 'Frete internacional (R$)'])

@@ -7,7 +7,7 @@ import {
 } from '../dados/api';
 import { lerExcel } from '../dominio/excel';
 
-const TIPOS = ['Planilha de quantidades', 'PX anterior', 'Cotação', 'Memorial', 'Cronograma', 'Outro'];
+const TIPOS = ['Planilha de quantidades', 'Mapa anterior', 'Cotação', 'Memorial', 'Cronograma', 'Outro'];
 const ICONE = <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>;
 type Vista = '*' | '' | string; // * = todos, '' = sem pasta
 
@@ -43,7 +43,7 @@ export function Biblioteca() {
         try {
           const abas = await lerExcel(await f.arrayBuffer());
           itens = abas[0]?.planilha.linhas.filter(l => !l.titulo).length ?? 0;
-          if (abas[0]?.planilha.colunas.some(c => ['trib', 'parc', 'ger'].includes(c.auto ?? ''))) tipo = 'PX anterior';
+          if (abas[0]?.planilha.colunas.some(c => ['trib', 'parc', 'ger'].includes(c.auto ?? ''))) tipo = 'Mapa anterior';
           if (!abas.length) situacao = 'Sem itens reconhecidos';
         } catch { situacao = 'Revisar extração'; }
       } else if (/\.xls$/i.test(f.name)) { situacao = 'Formato .xls antigo: salve como .xlsx para importar'; }

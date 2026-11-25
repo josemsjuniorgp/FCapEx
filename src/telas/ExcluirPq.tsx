@@ -19,10 +19,10 @@ export function ExcluirPq({ itens, res, onFechar, onExcluir }: {
 
   return (
     <Dialogo titulo="Excluir PQ" onFechar={onFechar}>
-      <p className="note">Escolha as PQs (pelo Documento de Origem) cujas linhas devem sair desta PX. Os títulos que ficarem sem itens
-        também saem. O arquivo continua na Biblioteca, e dá para desfazer pelo botão ↶ da PX.</p>
+      <p className="note">Escolha as PQs (pelo Documento de Origem) cujas linhas devem sair deste Mapa. Os títulos que ficarem sem itens
+        também saem. O arquivo continua na Biblioteca, e dá para desfazer pelo botão ↶ do Mapa.</p>
       {!pqs.length
-        ? <p className="note">Nenhuma linha desta PX tem Documento de Origem (só linhas inseridas à mão).</p>
+        ? <p className="note">Nenhuma linha deste Mapa tem Documento de Origem (só linhas inseridas à mão).</p>
         : (
           <table className="t excluir-pq">
             <thead><tr><th /><th>Documento de Origem</th><th className="num">Itens</th><th className="num">Total geral</th></tr></thead>

@@ -79,9 +79,9 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
   };
   await passo('PX: coluna BDI é uma lista ("-" ou cadastrados) e BDI (R$) ao lado', async () => {
     await p.getByRole('link', { name: 'Projetos', exact: true }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-BDI-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste BDI');
-    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-BDI-01' }).waitFor();
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-BDI-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste BDI');
+    await p.getByRole('button', { name: 'Criar Mapa' }).click(); await p.locator('.px-cab', { hasText: 'PX-BDI-01' }).waitFor();
     await p.getByRole('button', { name: 'Inserir item' }).click();
     linha = p.locator('table.grid tbody tr').first(); await linha.waitFor(); await lerCab();
     if (cab.indexOf('BDI (R$)') !== cab.indexOf('BDI') + 1) throw new Error('BDI (R$) não está ao lado do BDI: ' + cab.join('|'));
@@ -123,7 +123,7 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
     await p.getByText('Rev 0 emitida').waitFor();
     await p.getByRole('link', { name: 'BDI', exact: true }).click();
     const f = card('BDI Fornecimento');
-    await f.getByText('Usado em 2 linhas de PX em edição').waitFor();
+    await f.getByText('Usado em 2 linhas de Mapa em edição').waitFor();
     await f.getByLabel('Lucro (%)').fill('20');
     await f.getByRole('button', { name: 'Salvar' }).click();
     await p.getByText('BDI Fornecimento salvo.').waitFor();
@@ -132,7 +132,7 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
     linha = p.locator('table.grid tbody tr').first(); await linha.getByText('OK', { exact: true }).waitFor(); await lerCab();
     const v = (await td('BDI (R$)').innerText()).trim();
     if (v !== nf(1000 * forn2)) throw new Error(`revisão em edição deveria usar o BDI novo: ${v} (esperado ${nf(1000 * forn2)})`);
-    await p.getByRole('button', { name: 'Comparar PXs' }).click();
+    await p.getByRole('button', { name: 'Comparar Mapas' }).click();
     await p.locator('.kpi', { hasText: 'Total Rev 0' }).locator('b').filter({ hasText: nf(totalRev0) }).waitFor({ timeout: 10000 }).catch(() => {});
     const k0 = (await p.locator('.kpi', { hasText: 'Total Rev 0' }).locator('b').innerText()).replace(/\s/g, ' ');
     const k1 = (await p.locator('.kpi', { hasText: 'Total Rev 1' }).locator('b').innerText()).replace(/\s/g, ' ');
@@ -142,22 +142,22 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
   });
 
   await passo('exportar Excel com BDI na linha, quadro por BDI e composição', async () => {
-    await p.getByRole('link', { name: '← Voltar à PX' }).click();
+    await p.getByRole('link', { name: '← Voltar ao Mapa' }).click();
     await p.locator('table.grid tbody tr').first().getByText('OK', { exact: true }).waitFor();
     const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Exportar Excel' }).click()]);
     const arq = `${S}/bdi.xlsx`; await dl.saveAs(arq);
     const wb = new ExcelJS.Workbook(); await wb.xlsx.readFile(arq);
     const texto = n => { const out = []; wb.getWorksheet(n).eachRow(r => r.eachCell(c => out.push(String(c.value)))); return out.join('\n'); };
-    if (!texto('PX').includes(`BDI Fornecimento (${nf(forn2 * 100)}%)`)) throw new Error('aba PX sem o BDI da linha');
+    if (!texto('Mapa').includes(`BDI Fornecimento (${nf(forn2 * 100)}%)`)) throw new Error('aba PX sem o BDI da linha');
     if (!texto('Resumo').includes('POR BDI')) throw new Error('Resumo sem quadro por BDI');
     const par = texto('Parâmetros');
-    if (!par.includes('BDIS USADOS NESTA PX') || !par.includes('Mobilização 2,00%') || par.includes('BDI Obras Civis')) throw new Error('Parâmetros: ' + par.slice(0, 400));
+    if (!par.includes('BDIS USADOS NESTE MAPA') || !par.includes('Mobilização 2,00%') || par.includes('BDI Obras Civis')) throw new Error('Parâmetros: ' + par.slice(0, 400));
   });
 
   await passo('excluir BDI que não está em uso', async () => {
     await p.getByRole('link', { name: 'BDI', exact: true }).click();
     const c = card('BDI Obras Civis');
-    await c.getByText('Não usado em PX em edição').waitFor();
+    await c.getByText('Não usado em Mapa em edição').waitFor();
     await c.getByRole('button', { name: 'Excluir' }).click();
     await c.getByRole('button', { name: 'Excluir' }).click();
     await p.getByText('BDI Obras Civis excluído.').waitFor();

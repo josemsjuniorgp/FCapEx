@@ -32,9 +32,9 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
   };
   const cartao = () => p.locator('.kpi.maturidade');
   await passo('coluna "Origem do preço" (grupo Cotação) e cartão compacto na PX: 60% firme = dentro da meta', async () => {
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-MAT-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste maturidade');
-    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-MAT-01' }).waitFor();
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-MAT-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste maturidade');
+    await p.getByRole('button', { name: 'Criar Mapa' }).click(); await p.locator('.px-cab', { hasText: 'PX-MAT-01' }).waitFor();
     if (!(await cartao().innerText()).includes('Projeto Básico · Classe 3')) throw new Error('cartão sem fase: ' + await cartao().innerText());
     for (let i = 0; i < 2; i++) { await p.getByRole('button', { name: 'Inserir item' }).click(); await p.locator('table.grid tbody tr').nth(i).waitFor(); }
     await lerCab();
@@ -83,9 +83,9 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     const arq = `${S}/maturidade.xlsx`; await dl.saveAs(arq);
     const wb = new ExcelJS.Workbook(); await wb.xlsx.readFile(arq);
     const texto = n => { const out = []; wb.getWorksheet(n).eachRow(r => r.eachCell(c => out.push(String(c.value)))); return out.join('\n'); };
-    if (!texto('PX').includes('Cotação firme de fornecedor')) throw new Error('aba PX sem origem');
+    if (!texto('Mapa').includes('Cotação firme de fornecedor')) throw new Error('aba PX sem origem');
     const r = texto('Resumo');
-    for (const t of ['MATURIDADE DA PX', 'Classe 2', 'Abaixo da meta', 'POR ORIGEM DO PREÇO', '70% a 90%']) if (!r.includes(t)) throw new Error('Resumo sem ' + t);
+    for (const t of ['MATURIDADE DO MAPA', 'Classe 2', 'Abaixo da meta', 'POR ORIGEM DO PREÇO', '70% a 90%']) if (!r.includes(t)) throw new Error('Resumo sem ' + t);
   });
   await b.close();
 })();

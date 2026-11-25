@@ -15,10 +15,10 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await p.getByPlaceholder('Nome do cliente').fill('Cliente M'); await p.getByRole('button', { name: 'Criar cliente' }).click();
     await p.getByRole('button', { name: 'Novo projeto' }).click();
     await p.getByPlaceholder('Nome do projeto').fill('Projeto M'); await p.getByRole('button', { name: 'Criar projeto' }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-M-01');
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-M-01');
     await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste moedas');
-    await p.getByRole('button', { name: 'Criar PX' }).click();
+    await p.getByRole('button', { name: 'Criar Mapa' }).click();
     await p.locator('.px-cab', { hasText: 'PX-M-01' }).filter({ hasText: 'Rev 0' }).waitFor();
   });
   await passo('adicionar a moeda Libra (GBP) em Parâmetros', async () => {

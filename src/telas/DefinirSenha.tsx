@@ -27,7 +27,7 @@ export function DefinirSenha() {
   return (
     <main style={{ display: 'grid', placeItems: 'center', minHeight: '100%', padding: 20 }}>
       <form className="card stack" style={{ width: 'min(380px,100%)', padding: 24 }} onSubmit={salvar}>
-        <div className="brand"><i>PX</i><span>Montador de PX</span></div>
+        <div className="brand"><i>FC</i><span>FCapEx</span></div>
         <h1>{convite ? 'Bem-vindo! Crie sua senha' : 'Escolha uma nova senha'}</h1>
         <p className="note">{sessao?.user.email}</p>
         <label className="stack" style={{ gap: 4 }}><span className="note">Nova senha</span>

@@ -85,7 +85,7 @@ export function PaginaBdi() {
         {podeEditar && !novo && <button className="btn primary" onClick={() => setNovo({ ...VAZIO, v: { ...VAZIO.v }, extras: [] })}>Novo BDI</button>}
       </div>
       <p className="note bdi-intro">
-        Cadastre os BDIs da empresa e escolha um deles em cada linha da PX (coluna <b>BDI</b>). O BDI incide sobre o valor líquido
+        Cadastre os BDIs da empresa e escolha um deles em cada linha do Mapa (coluna <b>BDI</b>). O BDI incide sobre o valor líquido
         da linha (quantidade × preço × câmbio). Os tributos <b>não</b> entram aqui: eles são calculados à parte, linha a linha.
         <br /><span className="bdi-formula">BDI = (1 + AC + S + G + R + parcelas personalizadas) × (1 + DF) × (1 + L) − 1</span>
       </p>
@@ -177,7 +177,7 @@ function CartaoBdi({ r, editavel, novo, uso, mudou, onMudar, onSalvar, onCancela
           : <>Exemplo: valor líquido de {brl(100000)} → <b>{brl(100000 * (1 + final))}</b> com BDI</>}
       </div>
       <footer className="bdi-rodape">
-        {!novo && <span className="note">{uso ? `Usado em ${plural(uso, 'linha', 'linhas')} de PX em edição` : 'Não usado em PX em edição'}</span>}
+        {!novo && <span className="note">{uso ? `Usado em ${plural(uso, 'linha', 'linhas')} de Mapa em edição` : 'Não usado em Mapa em edição'}</span>}
         <span className="spacer" />
         {editavel && (novo || mudou) && <>
           <button className="btn" onClick={onCancelar}>{novo ? 'Cancelar' : 'Desfazer'}</button>

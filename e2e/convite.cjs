@@ -37,7 +37,7 @@ async function email(para, assunto) {
   let conv;
   await passo('e-mail de convite chega em português', async () => {
     conv = await email(bob);
-    if (conv.assunto !== 'Convite para o Montador de PX') throw new Error('assunto: ' + conv.assunto);
+    if (conv.assunto !== 'Convite para o FCapEx') throw new Error('assunto: ' + conv.assunto);
   });
   const p2 = await nova();
   await passo('convidado abre o link, cria a senha e entra na empresa', async () => {
@@ -78,7 +78,7 @@ async function email(para, assunto) {
   let rec;
   await passo('e-mail de redefinição chega em português', async () => {
     rec = await email(alice, 'Redefinir');
-    if (rec.assunto !== 'Redefinir senha do Montador de PX') throw new Error('assunto: ' + rec.assunto);
+    if (rec.assunto !== 'Redefinir senha do FCapEx') throw new Error('assunto: ' + rec.assunto);
   });
   await passo('abre o link, define nova senha e entra', async () => {
     await p.goto(rec.link);

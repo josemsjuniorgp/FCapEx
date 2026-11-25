@@ -42,10 +42,10 @@ const S = process.argv[2];
   });
   await passo('criar PX', async () => {
     await p.getByRole('link', { name: 'Projetos' }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-0001');
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-0001');
     await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Estimativa classe 3');
-    await p.getByRole('button', { name: 'Criar PX' }).click();
+    await p.getByRole('button', { name: 'Criar Mapa' }).click();
     await p.locator('.px-cab', { hasText: 'PX-0001' }).filter({ hasText: 'Rev 0' }).waitFor();
   });
   await passo('cabeçalho da PX: trilha cliente › projeto e volta ao cliente', async () => {
@@ -130,7 +130,7 @@ const S = process.argv[2];
     if (!itensF.includes('Itens 1 de 4')) throw new Error('indicadores filtrados: ' + itensF);
     if (!(await kf.locator('.kpi', { hasText: 'Total Geral Bruto (R$)' }).innerText()).includes('% do projeto')) throw new Error('sem % do projeto');
     if (/mostrando/.test(await p.locator('.filtros-ativos').innerText())) throw new Error('faixa de filtros ainda tem números');
-    if (!(await p.locator('.tools').innerText()).replace(/\s+/g, ' ').endsWith('Emitir nova revisão Dados da PX')) throw new Error('ordem dos botões: ' + await p.locator('.tools').innerText());
+    if (!(await p.locator('.tools').innerText()).replace(/\s+/g, ' ').endsWith('Emitir nova revisão Dados do Mapa')) throw new Error('ordem dos botões: ' + await p.locator('.tools').innerText());
     await p.screenshot({ path: `${S}/shots/17b-filtro-ativo.png` });
     // guardado ao recarregar
     await p.reload(); await p.locator('.filtro-chip', { hasText: '(F) Fornecimento' }).waitFor();
@@ -170,7 +170,7 @@ const S = process.argv[2];
     const preco = p.locator('table.grid tbody tr').nth(1).locator('td.in-c .cur input');
     await preco.fill('1500'); await preco.press('Enter');
     await p.waitForTimeout(600);
-    await p.getByRole('button', { name: 'Comparar PXs' }).click();
+    await p.getByRole('button', { name: 'Comparar Mapas' }).click();
     await p.getByText('Comparar revisões · PX-0001').waitFor();
     await p.getByText(/preço 1000 → 1500/).waitFor();
     await p.screenshot({ path: `${S}/shots/5-comparar.png` });

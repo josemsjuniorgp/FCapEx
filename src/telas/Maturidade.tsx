@@ -51,18 +51,18 @@ export function PaginaMaturidade() {
     <div className="stack" style={{ maxWidth: 1180 }}>
       <h1>Maturidade</h1>
       <p className="note" style={{ maxWidth: 860 }}>
-        Maturidade = parte do <b>Total geral</b> da PX com <b>preço firme</b> (contrato ou pedido de compra emitido, ou cotação firme
+        Maturidade = parte do <b>Total geral</b> do Mapa com <b>preço firme</b> (contrato ou pedido de compra emitido, ou cotação firme
         de fornecedor), comparada com a meta de cotações firmes da <b>classe AACE</b> do projeto. A origem do preço é escolhida em cada
-        linha da PX (coluna "Origem do preço"); a classe e a fase ficam no cadastro do projeto ("Editar projeto").
+        linha do Mapa (coluna "Origem do preço"); a classe e a fase ficam no cadastro do projeto ("Editar projeto").
       </p>
 
       {pxSel && mats[pxSel.id] && <CartaoMaturidade px={pxSel} projeto={projSel} m={mats[pxSel.id]} onFechar={() => setQs({})} />}
 
       <div className="mat-lado">
         <section className="card mat-lista">
-          <h2>PX da empresa</h2>
+          <h2>Mapas de Preços da empresa</h2>
           {carregando && <p className="note">Calculando…</p>}
-          {!carregando && !grupos.length && <Vazio>Nenhuma PX cadastrada ainda.</Vazio>}
+          {!carregando && !grupos.length && <Vazio>Nenhum Mapa de Preços cadastrado ainda.</Vazio>}
           {grupos.map(({ c, projs }) => (
             <div key={c.id} className="mat-cli">
               <h3>{c.nome}</h3>
@@ -122,7 +122,7 @@ function CartaoMaturidade({ px, projeto, m, onFechar }: { px: Px; projeto?: Proj
     <section className={'card mat-card mat-st-borda ' + (ad ?? '')} aria-label={`Maturidade de ${px.codigo}`}>
       <div className="mat-card-cab">
         <div>
-          <small className="note">MATURIDADE DA PX · <span className="mono">{px.codigo}</span> · {px.nome}</small>
+          <small className="note">MATURIDADE DO MAPA · <span className="mono">{px.codigo}</span> · {px.nome}</small>
           <h2>{projeto?.fase || 'Fase não informada'}{classe ? ` · Classe ${classe} (AACE)` : ''}</h2>
           <span className="note">{classe
             ? <>maturidade do projeto {faixaTxt(CLASSES[classe].maturidade)} · meta de cotações firmes <b>{faixaTxt(CLASSES[classe].meta)}</b></>
@@ -147,7 +147,7 @@ function CartaoMaturidade({ px, projeto, m, onFechar }: { px: Px; projeto?: Proj
         <span className="note">{m.linhas} linhas com valor{m.semOrigem ? ` · ${m.semOrigem} sem origem do preço informada` : ''}. Linhas incompletas (sem total) não entram.</span>
         <span className="spacer" />
         <button className="btn small" onClick={onFechar}>Fechar</button>
-        <Link className="btn small primary" to={`/px/${px.id}`}>Abrir PX</Link>
+        <Link className="btn small primary" to={`/px/${px.id}`}>Abrir Mapa</Link>
       </div>
     </section>
   );

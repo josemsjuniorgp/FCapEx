@@ -14,9 +14,9 @@ const num = t => parseFloat(t.replace(/[^\d,-]/g, '').replace(',', '.'));
     await p.getByPlaceholder('Nome da empresa').fill('Empresa Tributos'); await p.getByRole('button', { name: 'Criar', exact: true }).click();
     await p.getByRole('button', { name: '+ Novo cliente' }).click(); await p.getByPlaceholder('Nome do cliente').fill('Cliente T'); await p.getByRole('button', { name: 'Criar cliente' }).click();
     await p.getByRole('button', { name: 'Novo projeto' }).click(); await p.getByPlaceholder('Nome do projeto').fill('Projeto T'); await p.getByRole('button', { name: 'Criar projeto' }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-T-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste tributos');
-    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-T-01' }).waitFor();
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-T-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste tributos');
+    await p.getByRole('button', { name: 'Criar Mapa' }).click(); await p.locator('.px-cab', { hasText: 'PX-T-01' }).waitFor();
   });
   await passo('Parâmetros: 7 tributos padrão e criar CSLL 1% só para serviço', async () => {
     await p.getByRole('link', { name: 'Parâmetros', exact: true }).click();

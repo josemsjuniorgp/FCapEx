@@ -1,6 +1,6 @@
-# FCapEx — Montador de PX
+# FCapEx — Mapas de Preços CapEx
 
-Sistema web (SaaS multiempresa) para montar **PX** (planilhas de preço CapEx) a partir de **PQ**
+Sistema web (SaaS multiempresa) para montar **Mapas de Preços** CapEx (antes chamados de PX) a partir de **PQ**
 (planilhas de quantidades). Regras de negócio acumuladas: [`CONTEXTO.md`](CONTEXTO.md).
 Protótipo original (HTML único): [`prototipo/montador-px.html`](prototipo/montador-px.html).
 

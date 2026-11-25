@@ -34,7 +34,7 @@ function Shell() {
   return (
     <div className="app">
       <nav className="side" aria-label="Navegação">
-        <div className="brand2"><i>PX</i><div><b>Montador de PX</b><small>Orçamentos CapEx</small></div></div>
+        <div className="brand2"><i>FC</i><div><b>FCapEx</b><small>Mapas de Preços CapEx</small></div></div>
         <div className="nav-label">Menu</div>
         {MENU.map(([to, nome, d]) => (
           <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive || (to === '/' && local.pathname.startsWith('/px/')) ? ' ativo' : '')}>

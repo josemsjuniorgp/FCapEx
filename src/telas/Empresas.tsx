@@ -20,7 +20,7 @@ export function Empresas() {
   return (
     <main style={{ display: 'grid', placeItems: 'center', minHeight: '100%', padding: 20 }}>
       <section className="card stack" style={{ width: 'min(480px,100%)', padding: 24 }}>
-        <div className="brand"><i>PX</i><span>Montador de PX</span></div>
+        <div className="brand"><i>FC</i><span>FCapEx</span></div>
         <h1>{empresas.length ? 'Escolha a empresa' : 'Cadastre sua empresa'}</h1>
         <p className="note">Conectado como {sessao?.user.email}.</p>
         {empresas.length > 0 && (

@@ -24,10 +24,10 @@ export function RenomearPx({ px, onSalvo, onCancelar, compacto }: {
 
   return (
     <div className={'renomear' + (compacto ? ' compacto' : '')}>
-      <label className="fld">Código da PX
+      <label className="fld">Código do Mapa
         <input className="in mono" autoFocus maxLength={250} value={codigo} onChange={e => setCodigo(e.target.value)} onKeyDown={tecla} />
       </label>
-      <label className="fld">Nome da PX
+      <label className="fld">Nome do Mapa
         <input className="in" value={nome} onChange={e => setNome(e.target.value)} onKeyDown={tecla} />
       </label>
       <div className="row">

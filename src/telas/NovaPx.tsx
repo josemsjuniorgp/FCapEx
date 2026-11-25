@@ -76,13 +76,13 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
   );
 
   return (
-    <Dialogo titulo="Nova PX" onFechar={onFechar}>
+    <Dialogo titulo="Novo Mapa de Preços" onFechar={onFechar}>
       <div className="pxform stack">
         <div className="row" style={{ alignItems: 'flex-start' }}>
-          <label className="fld" style={{ flex: 2, minWidth: 220 }}>Código da PX (obrigatório)
-            <input className="in mono" autoFocus maxLength={250} value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="Ex.: PX-A1-1000-G-PB-0001" />
+          <label className="fld" style={{ flex: 2, minWidth: 220 }}>Código do Mapa (obrigatório)
+            <input className="in mono" autoFocus maxLength={250} value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="Ex.: A1-1000-G-PB-0001" />
           </label>
-          <label className="fld" style={{ flex: 2, minWidth: 220 }}>Nome da PX (obrigatório)
+          <label className="fld" style={{ flex: 2, minWidth: 220 }}>Nome do Mapa (obrigatório)
             <input className="in" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Estimativa classe 3" />
           </label>
           <label className="fld" style={{ flex: 1, minWidth: 200 }}>Projeto
@@ -91,7 +91,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
             </select>
           </label>
         </div>
-        <span className="note">Digite o código do jeito que quiser (letras, números, símbolos, até 250 caracteres). Ele não pode repetir o de outra PX da empresa. A PX nasce na Rev 0.</span>
+        <span className="note">Digite o código do jeito que quiser (letras, números, símbolos, até 250 caracteres). Ele não pode repetir o de outro Mapa da empresa. O Mapa nasce na Rev 0.</span>
 
         <strong>Modelo</strong>
         <div className="mopts">
@@ -108,7 +108,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
         )}
         {modo?.tipo === 'importar' && arquivo && (
           <div className="group-box stack" style={{ gap: 6 }}>
-            <strong>Colunas que a PX vai ter ({colunasFinais.length})</strong>
+            <strong>Colunas que o Mapa vai ter ({colunasFinais.length})</strong>
             <span>{COLUNAS.filter(c => colunasFinais.includes(c.k)).map(c => c.h).join(' · ')}</span>
             <span className="note">Lidas do cabeçalho do Excel, mais as obrigatórias (Nº, Descrição, Quantidade, Preço unit., Total geral e Check).
               Depois de criar, dá para inserir ou excluir colunas pelo botão "Colunas" da grade.</span>
@@ -141,7 +141,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
 
         <label className="fld">Começar de
           <select value={copiarDe} onChange={e => setCopiarDe(e.target.value)}>
-            <option value="">PX vazia (importe a PQ depois)</option>
+            <option value="">Mapa vazio (importe a PQ depois)</option>
             {pxs.map(x => <option key={x.id} value={x.id}>Copiar itens de {x.codigo} · {x.nome}</option>)}
           </select>
         </label>
@@ -150,7 +150,7 @@ export function NovaPx({ projetos, pxs, projetoInicial, onFechar, onCriada }: {
           <span className="note">{colunasFinais.length} colunas</span><span className="spacer" />
           <button className="btn" onClick={onFechar}>Cancelar</button>
           <button className="btn primary" disabled={!nome.trim() || !projeto || !modo || ocupado || (modo.tipo === 'importar' && !arquivo) || !codigo.trim()} onClick={criar}>
-            Criar PX
+            Criar Mapa
           </button>
         </div>
       </div>

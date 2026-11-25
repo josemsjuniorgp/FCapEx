@@ -30,8 +30,12 @@ function ok<T>(r: { data: T; error: { message: string } | null }): T {
 
 export function traduzErro(msg: string): string {
   if (/row-level security|permission denied/i.test(msg)) return 'Você não tem permissão para esta ação.';
-  if (/pxs_empresa_id_codigo_key/i.test(msg)) return 'Já existe uma PX com esse código.';
-  if (/pxs_codigo_tamanho/i.test(msg)) return 'O código da PX precisa ter entre 1 e 250 caracteres.';
+  if (/pxs_empresa_id_codigo_key/i.test(msg)) return 'Já existe um Mapa com esse código.';
+  // mensagens das funções do banco (escritas quando o documento se chamava "PX")
+  { const m = msg.match(/Já existe uma PX com o código (.*)/); if (m) return `Já existe um Mapa com o código ${m[1]}`; }
+  if (/Sem permissão para criar PX/i.test(msg)) return 'Sem permissão para criar Mapa neste projeto.';
+  if (/PX sem revisão em edição/i.test(msg)) return 'Mapa sem revisão em edição.';
+  if (/pxs_codigo_tamanho/i.test(msg)) return 'O código do Mapa precisa ter entre 1 e 250 caracteres.';
   if (/fretes_empresa_id_tipo_nome_key/i.test(msg)) return 'Já existe um frete com esse nome.';
   if (/bdis_empresa_id_nome_key/i.test(msg)) return 'Já existe um BDI com esse nome.';
   if (/tributos_empresa_id_nome_key/i.test(msg)) return 'Já existe um tributo com esse nome.';

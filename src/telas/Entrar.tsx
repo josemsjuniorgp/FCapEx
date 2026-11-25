@@ -30,7 +30,7 @@ export function Entrar() {
   return (
     <main style={{ display: 'grid', placeItems: 'center', minHeight: '100%', padding: 20 }}>
       <form className="card stack" style={{ width: 'min(380px,100%)', padding: 24 }} onSubmit={enviar}>
-        <div className="brand"><i>PX</i><span>Montador de PX</span></div>
+        <div className="brand"><i>FC</i><span>FCapEx</span></div>
         <h1>{titulo}</h1>
         {modo === 'esqueci' && <p className="note">Informe o e-mail da sua conta. Vamos enviar um link para você escolher uma nova senha.</p>}
         {!configurado && <div className="banner">Supabase não configurado: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.</div>}

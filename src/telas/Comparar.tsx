@@ -78,7 +78,7 @@ export function Comparar() {
   return (
     <div className="stack">
       <div className="row">
-        <Link to={`/px/${px.id}`} className="linkbtn">← Voltar à PX</Link>
+        <Link to={`/px/${px.id}`} className="linkbtn">← Voltar ao Mapa</Link>
         <h1>Comparar revisões · {px.codigo}</h1>
       </div>
       {revs.length < 2 ? <Vazio>{px.codigo} ainda está na primeira emissão. Use "Emitir nova revisão" na grade para congelar a revisão atual e começar a próxima.</Vazio> : (

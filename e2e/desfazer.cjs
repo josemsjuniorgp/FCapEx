@@ -26,9 +26,9 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await p.locator('input[type=file]').setInputFiles(`${S}/PQ-Zerados.xlsx`);
     await p.getByText('PQ-Zerados.xlsx', { exact: true }).waitFor();
     await p.getByRole('link', { name: 'Projetos', exact: true }).click();
-    await p.getByRole('button', { name: 'Nova PX' }).click();
-    await p.getByPlaceholder('Ex.: PX-A1-1000-G-PB-0001').fill('PX-DES-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste desfazer');
-    await p.getByRole('button', { name: 'Criar PX' }).click(); await p.locator('.px-cab', { hasText: 'PX-DES-01' }).waitFor();
+    await p.getByRole('button', { name: 'Novo Mapa de Preços' }).click();
+    await p.getByPlaceholder('Ex.: A1-1000-G-PB-0001').fill('PX-DES-01'); await p.getByPlaceholder('Ex.: Estimativa classe 3').fill('Teste desfazer');
+    await p.getByRole('button', { name: 'Criar Mapa' }).click(); await p.locator('.px-cab', { hasText: 'PX-DES-01' }).waitFor();
     if (!(await desfazer.isDisabled()) || !(await refazer.isDisabled())) throw new Error('desfazer/refazer deveriam começar desligados');
   });
   await passo('importar PQ: linhas com quantidade zero ou vazia ficam de fora por padrão', async () => {

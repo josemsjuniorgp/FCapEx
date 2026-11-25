@@ -296,7 +296,7 @@ export function EditorPx() {
   function larguraAutomatica(k: string) {
     setLargMan(m => { const n = { ...m }; delete n[k]; localStorage.setItem('fcapex:larguras:' + id, JSON.stringify(n)); return n; });
   }
-  if (erro) return <div className="banner">Não foi possível abrir a PX: {erro}</div>;
+  if (erro) return <div className="banner">Não foi possível abrir o Mapa: {erro}</div>;
   if (!px || !parametros || !t) return <p className="note">Carregando…</p>;
   const editavel = podeEditar && !!revAtual;
   const usd = parametros.cambio.USD;
@@ -325,7 +325,7 @@ export function EditorPx() {
                 <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" /></svg>
               </button>
             )}
-            <span className="chip codigo" title="Código da PX">{px.codigo}
+            <span className="chip codigo" title="Código do Mapa">{px.codigo}
               <button aria-label="Copiar código" title="Copiar código"
                 onClick={() => navigator.clipboard?.writeText(px.codigo).then(() => avisar('Código copiado.'), () => avisar('Não foi possível copiar.'))}>
                 <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
@@ -419,11 +419,11 @@ export function EditorPx() {
         )}
         <span className="spacer" />
         <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Gerenciar colunas</button>
-        <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar PXs</button>
-        <button className="btn" onClick={exportar} disabled={exportando} title="Baixar a PX em Excel (.xlsx) com resumo e parâmetros">
+        <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar Mapas</button>
+        <button className="btn" onClick={exportar} disabled={exportando} title="Baixar o Mapa em Excel (.xlsx) com resumo e parâmetros">
           {exportando ? 'Gerando…' : 'Exportar Excel'}</button>
         {editavel && <button className="btn primary" onClick={() => setPerguntar('emitir')}>Emitir nova revisão</button>}
-        <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
+        <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados do Mapa</button>
       </div>
       {passa && (
         <div className="filtros-ativos" role="region" aria-label="Filtros ativos">
@@ -431,7 +431,7 @@ export function EditorPx() {
           {Object.entries(filtros).map(([k, f]) => {
             const c = todas.find(x => x.k === k);
             return (
-              <span key={k} className={'filtro-chip' + (colsModelo.some(x => x.k === k) ? '' : ' fora')} title={colsModelo.some(x => x.k === k) ? '' : 'Esta coluna não está na PX: o filtro não vale'}>
+              <span key={k} className={'filtro-chip' + (colsModelo.some(x => x.k === k) ? '' : ' fora')} title={colsModelo.some(x => x.k === k) ? '' : 'Esta coluna não está no Mapa: o filtro não vale'}>
                 {c?.h ?? k}: <b>{resumoFiltro(f)}</b>
                 <button aria-label={`Tirar filtro de ${c?.h ?? k}`} onClick={() => filtrar(k, null)}>✕</button>
               </span>
@@ -503,7 +503,7 @@ export function EditorPx() {
               })}
             </tbody>
           </table>
-          {!itens.length && <div style={{ padding: 24 }} className="note">Esta PX ainda não tem itens. Use <b>Importar PQ</b> ou <b>Inserir item</b>.</div>}
+          {!itens.length && <div style={{ padding: 24 }} className="note">Este Mapa ainda não tem itens. Use <b>Importar PQ</b> ou <b>Inserir item</b>.</div>}
           {!!itens.length && passa && !itensVis.length && (
             <div style={{ padding: 24 }} className="note">Nenhum item atende aos filtros. <button className="linkbtn" onClick={() => setFiltros({})}>Limpar todos os filtros</button></div>
           )}
@@ -515,8 +515,8 @@ export function EditorPx() {
               <div className="panel-head"><h2>Gerenciar colunas</h2><button className="btn small" onClick={() => setPainel(null)}>Fechar</button></div>
               {podeEditar && (
                 <>
-                  <h3>Colunas desta PX</h3>
-                  <span className="note">Inserir ou excluir colunas vale para todos que abrem esta PX. Excluir não apaga os valores: ao inserir de novo, eles voltam.</span>
+                  <h3>Colunas deste Mapa</h3>
+                  <span className="note">Inserir ou excluir colunas vale para todos que abrem este Mapa. Excluir não apaga os valores: ao inserir de novo, eles voltam.</span>
                   {[...new Set(todas.map(c => c.g))].map(g => (
                     <div className="group-box" key={'px-' + g}><strong>{g}</strong>
                       {todas.filter(c => c.g === g).map(c => {
@@ -533,7 +533,7 @@ export function EditorPx() {
                   <h3>Ocultar só na minha tela</h3>
                 </>
               )}
-              <span className="note">Ocultar uma coluna só muda a sua visualização, não a PX.</span>
+              <span className="note">Ocultar uma coluna só muda a sua visualização, não o Mapa.</span>
               {[...new Set(todas.filter(c => modelo.has(c.k)).map(c => c.g))].map(g => (
                 <div className="group-box" key={g}><strong>{g}</strong>
                   {todas.filter(c => c.g === g && modelo.has(c.k)).map(c => (
@@ -546,7 +546,7 @@ export function EditorPx() {
           {painel === 'dados' && (
             <DadosPx px={px} projetos={projetos} emitidas={emitidas} revAtual={revAtual} podeEditar={podeEditar}
               onSalvo={carregar} onComparar={i => ir(`/px/${px.id}/comparar?de=${i}`)}
-              onExcluir={async () => { if (await acao(() => excluirPx(px.id), `${px.codigo} excluída.`)) ir('/'); }} />
+              onExcluir={async () => { if (await acao(() => excluirPx(px.id), `Mapa ${px.codigo} excluído.`)) ir('/'); }} />
           )}
         </aside>
       </div>
@@ -741,7 +741,7 @@ function DadosPx({ px, projetos, emitidas, revAtual, podeEditar, onSalvo, onComp
 
   return (
     <>
-      <div className="panel-head"><h2>Dados da PX</h2></div>
+      <div className="panel-head"><h2>Dados do Mapa</h2></div>
       <label className="fld">Código<input className="in mono" value={codigo} disabled={!podeEditar} onChange={e => setCodigo(e.target.value)} /></label>
       <label className="fld">Nome<input className="in" value={nome} disabled={!podeEditar} onChange={e => setNome(e.target.value)} /></label>
       <label className="fld">Projeto
@@ -766,8 +766,8 @@ function DadosPx({ px, projetos, emitidas, revAtual, podeEditar, onSalvo, onComp
         {revAtual && <div className="row"><span className="mono">Rev {revAtual.numero}</span><span className="pill p-info">em edição</span></div>}
       </div>
       {podeEditar && (apagar
-        ? <Confirmar msg={<>Excluir a <b>{px.codigo}</b> e todas as revisões dela?</>} sim="Excluir PX" onSim={onExcluir} onNao={() => setApagar(false)} />
-        : <button className="btn danger" onClick={() => setApagar(true)}>Excluir PX</button>)}
+        ? <Confirmar msg={<>Excluir o Mapa <b>{px.codigo}</b> e todas as revisões dele?</>} sim="Excluir Mapa" onSim={onExcluir} onNao={() => setApagar(false)} />
+        : <button className="btn danger" onClick={() => setApagar(true)}>Excluir Mapa</button>)}
     </>
   );
 }

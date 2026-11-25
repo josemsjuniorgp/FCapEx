@@ -95,14 +95,14 @@ function abaPx(
   tot: ReturnType<typeof totais>, usd: number | null, simbolo: (c: string) => string, quando: string, revTxt: string,
 ) {
   const N = colunas.length;
-  const ws = wb.addWorksheet('PX', { properties: { defaultRowHeight: 18 }, views: [{ showGridLines: false }] });
+  const ws = wb.addWorksheet('Mapa', { properties: { defaultRowHeight: 18 }, views: [{ showGridLines: false }] });
   colunas.forEach((c, i) => { ws.getColumn(i + 1).width = LARGURA[c.k] ?? 12; });
   const faixa = (linha: number, de: number, ate: number) => { if (ate > de) ws.mergeCells(linha, de, linha, ate); return ws.getCell(linha, de); };
 
   // --- cabeçalho do documento
   const c1 = faixa(1, 1, N); c1.value = d.empresa.toUpperCase();
   c1.font = { name: FONTE, size: 10, bold: true, color: { argb: COR.acento } };
-  const c2 = faixa(2, 1, N); c2.value = 'PLANILHA DE PREÇOS (PX)';
+  const c2 = faixa(2, 1, N); c2.value = 'MAPA DE PREÇOS';
   c2.font = { name: FONTE, size: 18, bold: true, color: { argb: COR.tinta } };
   ws.getRow(2).height = 28;
   const c3 = faixa(3, 1, N); c3.value = d.px.nome;
@@ -252,7 +252,7 @@ function abaPx(
     linha++;
   }
   if (!d.itens.length) {
-    const v = faixa(linha, 1, N); v.value = 'Esta PX ainda não tem itens.';
+    const v = faixa(linha, 1, N); v.value = 'Este Mapa ainda não tem itens.';
     v.font = { name: FONTE, size: 10, italic: true, color: { argb: COR.cinza } };
     linha++;
   }
@@ -303,7 +303,7 @@ function abaResumo(
 ) {
   const ws = wb.addWorksheet('Resumo', { views: [{ showGridLines: false }] });
   [12, 52, 10, 20, 20, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
-  const t = ws.getCell('A1'); t.value = 'RESUMO DA PX';
+  const t = ws.getCell('A1'); t.value = 'RESUMO DO MAPA';
   t.font = { name: FONTE, size: 16, bold: true, color: { argb: COR.tinta } };
   const s = ws.getCell('A2'); s.value = `${d.px.codigo} · ${d.px.nome} · ${revTxt} · exportado em ${quando}`;
   s.font = { name: FONTE, size: 10, color: { argb: COR.cinza } };
@@ -376,7 +376,7 @@ function abaResumo(
   }
   if (cols.has('origem')) {
     const m = calcularMaturidade(d.itens, res), ad = aderencia(m.pct, d.classe);
-    tabela('Maturidade da PX', ['Fase', 'Classe AACE', '% do valor com preço firme', 'Meta de cotações firmes', 'Situação'],
+    tabela('Maturidade do Mapa', ['Fase', 'Classe AACE', '% do valor com preço firme', 'Meta de cotações firmes', 'Situação'],
       [[d.fase || '(não informada)', d.classe ? `Classe ${d.classe}` : '(não informada)', m.pct, d.classe ? faixaTxt(CLASSES[d.classe].meta) : '—',
         ad ? ROTULO_ADERENCIA[ad] : d.classe ? 'sem valores' : 'informe a classe do projeto']],
       [null, null, '0.0%', null, null]);
@@ -435,7 +435,7 @@ function abaParametros(wb: ExcelJS.Workbook, d: DadosExportacao, quando: string)
   }
   const usados = new Set(d.itens.filter(i => !i.titulo && i.bdi).map(i => i.bdi));
   const bdisUsados = d.parametros.bdis.filter(b => usados.has(b.id));
-  bloco('BDIs usados nesta PX', ['BDI', 'Composição', 'BDI final', 'Linhas'],
+  bloco('BDIs usados neste Mapa', ['BDI', 'Composição', 'BDI final', 'Linhas'],
     bdisUsados.length
       ? bdisUsados.map(b => [b.nome, composicaoBdi(b), bdiFinal(b), d.itens.filter(i => !i.titulo && i.bdi === b.id).length])
       : [['(nenhum)', '', null, null]], [null, null, '0.00%', '0']);
@@ -505,4 +505,4 @@ function ajustarLarguras(ws: ExcelJS.Worksheet, colunas: Coluna[], linhaCab: num
 }
 
 /** Nome do arquivo: <código>_Rev<n>.xlsx, sem caracteres inválidos. */
-export const nomeArquivo = (codigo: string, rev: number) => `${codigo.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'PX'}_Rev${rev}.xlsx`;
+export const nomeArquivo = (codigo: string, rev: number) => `${codigo.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'Mapa'}_Rev${rev}.xlsx`;

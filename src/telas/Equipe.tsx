@@ -29,7 +29,7 @@ export function Equipe() {
     <div className="stack" style={{ maxWidth: 800 }}>
       <h1>Equipe · {empresa.nome}</h1>
       <p className="note">A pessoa convidada recebe um e-mail para criar a senha e já entra na empresa. Quem já tem conta entra direto, sem e-mail.</p>
-      <p className="note">Administrador: tudo, inclusive clientes, parâmetros e equipe. Orçamentista: projetos, PX e biblioteca. Revisor e Somente leitura: consultam.</p>
+      <p className="note">Administrador: tudo, inclusive clientes, parâmetros e equipe. Orçamentista: projetos, Mapas e biblioteca. Revisor e Somente leitura: consultam.</p>
       {ehAdmin && (
         <div className="card row" style={{ padding: 12 }}>
           <input className="in" style={{ flex: 1 }} type="email" placeholder="e-mail da pessoa" value={email} onChange={e => setEmail(e.target.value)} />

@@ -1,8 +1,15 @@
-# Montador de PX — contexto do projeto
+# FCapEx (Mapas de Preços) — contexto do projeto
 
-Sistema web **SaaS multiempresa** para montar **PX** (planilhas de preço CapEx) a partir de **PQ**
+Sistema web **SaaS multiempresa** **FCapEx** para montar **Mapas de Preços** CapEx a partir de **PQ**
 (planilhas de quantidades). Vendido para empresas: cada empresa só vê os próprios dados.
-Atualizado em 24/11/2026. O protótipo original (HTML único) está em `prototipo/montador-px.html`.
+
+> **Nome do documento:** na interface o antigo "PX" chama-se **Mapa de Preços** ("Mapa" sempre com M maiúsculo:
+> Novo Mapa de Preços, Dados do Mapa, Comparar Mapas…; modelo "Mapa Padrão"; Excel "MAPA DE PREÇOS", aba "Mapa").
+> Marca: **FCapEx · Mapas de Preços CapEx** (e-mails também). No código e no banco os nomes continuam `px`/`pxs`
+> (invisíveis ao usuário); mensagens de erro das funções do banco que citam "PX" são traduzidas em `traduzErro`.
+> Neste documento, "PX" = Mapa de Preços.
+
+Atualizado em 25/11/2026. O protótipo original (HTML único) está em `prototipo/montador-px.html`.
 
 ## Produção
 
@@ -35,7 +42,7 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 ### PX
 - **Código digitado livremente** na criação (até 250 caracteres, único na empresa); editável pelo lápis do
   cabeçalho, pelo "Renomear" do cartão ou em "Dados da PX". Revisão separada (Rev 0, Rev 1…).
-- Modelos: **PX Padrão** (sistema; "Você pode inserir ou excluir colunas"), **Importar modelo** (lê o cabeçalho do
+- Modelos: **Mapa Padrão** (sistema; "Você pode inserir ou excluir colunas"), **Importar modelo** (lê o cabeçalho do
   Excel, sem caixas de seleção), **Montar no sistema** (caixas de seleção). "PX Simplificada" foi removida.
 - Colunas da PX podem ser **inseridas/excluídas** depois (painel "Colunas"); excluir não apaga valores.
   "Ocultar só na minha tela" é separado. Obrigatórias: Nº, Descrição, Quantidade, Preço unit., Total geral, Check.

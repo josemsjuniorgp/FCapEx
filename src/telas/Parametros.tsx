@@ -107,12 +107,12 @@ function Tributos() {
                 </td>
               ))}
               <td>{ehAdmin && (perguntar === t.id
-                ? <Confirmar msg={<>Excluir <b>{t.nome}</b>? Ele sai do cálculo de todas as PX.</>} sim="Excluir" onNao={() => setPerguntar(null)}
+                ? <Confirmar msg={<>Excluir <b>{t.nome}</b>? Ele sai do cálculo de todos os Mapas.</>} sim="Excluir" onNao={() => setPerguntar(null)}
                     onSim={() => { setPerguntar(null); exec(() => excluirTributo(t.id), `${t.nome} excluído.`); }} />
                 : <button className="btn small danger" onClick={() => setPerguntar(t.id)}>Excluir</button>)}</td>
             </tr>
           ))}
-          {!parametros.tributos.length && <tr><td colSpan={7} className="note">Nenhum tributo cadastrado: as PX ficam sem tributos.</td></tr>}
+          {!parametros.tributos.length && <tr><td colSpan={7} className="note">Nenhum tributo cadastrado: os Mapas ficam sem tributos.</td></tr>}
         </tbody>
       </table>
       {ehAdmin && (
@@ -160,7 +160,7 @@ function Fretes({ tipo }: { tipo: Frete['tipo'] }) {
   return (
     <section className="card" style={{ padding: 16 }}>
       <h2>{nac ? 'Fretes nacionais' : 'Fretes internacionais'}</h2>
-      <p className="note">Cada frete pode ser escolhido nas linhas da PX (coluna "{nac ? 'Frete nacional' : 'Frete internacional'}").
+      <p className="note">Cada frete pode ser escolhido nas linhas do Mapa (coluna "{nac ? 'Frete nacional' : 'Frete internacional'}").
         <b> Valor por linha</b>: valor único para a linha, independente da quantidade{nac ? '' : ', na moeda escolhida (convertido pelo câmbio)'}.
         <b> % do valor líquido</b>: percentual sobre quantidade × preço × câmbio. O frete soma à base, antes dos tributos.</p>
       <table className="t">

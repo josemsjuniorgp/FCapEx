@@ -38,7 +38,7 @@ select pg_temp.confere((select count(*) from public.clientes) = 0, 'Alice não v
 select pg_temp.confere((select count(*) from public.moedas) = 3, 'parâmetros padrão: 3 moedas');
 select pg_temp.confere((select count(*) from public.tributos) = 7, 'tributos padrão: 7');
 select pg_temp.confere((select aliquota from public.tributos where nome = 'COFINS') = 0.076, 'COFINS padrão 7,6%');
-select pg_temp.confere((select string_agg(nome, ',') from public.modelos where empresa_id is null) = 'PX Padrão', 'só o modelo PX Padrão do sistema');
+select pg_temp.confere((select string_agg(nome, ',') from public.modelos where empresa_id is null) = 'Mapa Padrão', 'só o modelo Mapa Padrão do sistema');
 
 -- 3) Alice não escreve na empresa B
 select pg_temp.deve_falhar(format($q$insert into public.clientes (empresa_id, nome) values (%L, 'invasor')$q$, (select v from ids where k='B')), 'Alice criar cliente na B');

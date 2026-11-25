@@ -430,21 +430,21 @@ enabled = true
 
 # E-mails em português (no projeto de produção são aplicados pela API de configuração)
 [auth.email.template.invite]
-subject = "Convite para o Montador de PX"
+subject = "Convite para o FCapEx"
 content_path = "./supabase/templates/convite.html"
 
 [auth.email.template.confirmation]
-subject = "Confirme seu e-mail no Montador de PX"
+subject = "Confirme seu e-mail no FCapEx"
 content_path = "./supabase/templates/confirmacao.html"
 
 [auth.email.template.recovery]
-subject = "Redefinir senha do Montador de PX"
+subject = "Redefinir senha do FCapEx"
 content_path = "./supabase/templates/recuperacao.html"
 
 [auth.email.template.magic_link]
-subject = "Seu link de acesso ao Montador de PX"
+subject = "Seu link de acesso ao FCapEx"
 content_path = "./supabase/templates/link_acesso.html"
 
 [auth.email.template.email_change]
-subject = "Confirme a troca de e-mail no Montador de PX"
+subject = "Confirme a troca de e-mail no FCapEx"
 content_path = "./supabase/templates/troca_email.html"
