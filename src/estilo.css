@@ -510,3 +510,9 @@ table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 .btn.icone:disabled{opacity:.4;cursor:default}
 .desfazer-grupo{align-self:stretch;align-items:stretch}
 .btn.icone{width:40px;min-height:34px;align-self:stretch}
+
+/* ---------- Excluir PQ ---------- */
+.excluir-pq{width:100%}
+.excluir-pq tr.sel td{background:var(--err-soft)}
+.btn.danger-cheio{background:var(--err);border-color:var(--err);color:#fff}
+.btn.danger-cheio:disabled{opacity:.45}

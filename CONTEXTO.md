@@ -65,6 +65,12 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - Na PX: cartão compacto (fase · classe, "% firme", selo) que abre a página Maturidade. A página lista todas as PX por
   cliente/projeto e mostra o cartão completo (barra com a meta, valor por origem). Excel: coluna e quadros no Resumo.
 
+### Excluir PQ (PX)
+- Botão "Excluir PQ" ao lado de "Importar PQ": lista as PQs da PX (pelo Documento de Origem, com itens e Total geral);
+  marca uma ou várias e exclui as linhas delas de uma vez, mais os títulos que ficarem sem itens (título com linha
+  inserida à mão fica). Linhas sem Documento de Origem não aparecem. Só na PX aberta; o arquivo fica na Biblioteca.
+  Entra no desfazer como uma ação. A importação grava o Documento de Origem também nos títulos.
+
 ### Desfazer / Refazer (PX)
 - Botões ↶ ↷ na barra (e Ctrl+Z / Ctrl+Y fora dos campos de texto): até **3 ações** para trás e de volta até a última.
   Ação nova depois de desfazer apaga o "refazer". Entram: editar célula (inclusive listas e tributos), inserir/excluir

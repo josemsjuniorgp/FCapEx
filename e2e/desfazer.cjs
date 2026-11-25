@@ -79,5 +79,30 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await p.reload(); await esperarLinhas(4); await lerCab();
     if (await qtdDe(linhas.nth(1)) !== '11,00') throw new Error('não ficou gravado no banco');
   });
+  await passo('Excluir PQ: lista as PQs, exclui as linhas e o título que ficou vazio; desfazer traz de volta', async () => {
+    await p.getByRole('button', { name: 'Excluir PQ' }).click();
+    const dlg = p.getByRole('dialog', { name: 'Excluir PQ' });
+    const docs = (await dlg.locator('tbody tr').allInnerTexts()).map(x => x.replace(/\s+/g, ' ').trim());
+    if (docs.length !== 1 || !docs[0].startsWith('PQ-Zerados 2')) throw new Error('lista: ' + docs.join(' | '));
+    await dlg.getByLabel('Excluir PQ-Zerados').check();
+    await dlg.getByText('Serão excluídos 2 itens.').waitFor();   // o título fica: tem a linha inserida à mão embaixo
+    await p.screenshot({ path: `${S}/shots/52-excluir-pq.png` });
+    await dlg.getByRole('button', { name: 'Excluir 1 PQ' }).click();
+    await p.getByText('1 PQ excluída (2 linhas).').waitFor();
+    await esperarLinhas(2);   // sobram o título e a linha inserida à mão
+    await desfazer.click(); await esperarLinhas(4);
+    await refazer.click(); await esperarLinhas(2);
+    await p.reload(); await esperarLinhas(2);
+    // importando de novo, o título novo fica só com itens da PQ: ao excluir, ele sai junto
+    await p.getByRole('button', { name: 'Importar PQ' }).click();
+    await p.getByRole('button', { name: /PQ-Zerados\.xlsx/ }).click();
+    await p.getByRole('button', { name: /^Importar 3 linhas$/ }).click(); await esperarLinhas(5);
+    await p.getByRole('button', { name: 'Excluir PQ' }).click();
+    await dlg.getByLabel('Excluir PQ-Zerados').check();
+    await dlg.getByText('Serão excluídos 2 itens e 1 título.').waitFor();
+    await dlg.getByRole('button', { name: 'Excluir 1 PQ' }).click(); await esperarLinhas(2);
+    await p.getByRole('link', { name: 'Biblioteca' }).click();
+    await p.getByText('PQ-Zerados.xlsx', { exact: true }).waitFor();
+  });
   await b.close();
 })();

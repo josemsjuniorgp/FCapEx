@@ -272,7 +272,7 @@ export function paraItens(p: Planilha, destinos: (string | null)[], av: Avaliaca
       it[d] = converter(l.valores[sc.i], d);
     });
     if (l.titulo) it.titulo = true;
-    else it.pqdoc = o.numeroPq;
+    it.pqdoc = o.numeroPq;   // também nos títulos (não aparece na grade), para o "Excluir PQ"
     it.bdi = l.titulo ? null : bdiDaPlanilha(it.bdi, o.bdis ?? []);
     if (!l.titulo && temQtd && o.incluirZerados === false && !it.qtd) continue;   // quantidade zero ou vazia
     seq++;
@@ -286,4 +286,34 @@ export function contarZerados(p: Planilha, destinos: (string | null)[], av: Aval
   const i = p.colunas.findIndex((_, k) => destinos[k] === 'qtd' && av.situacao[k] === 'pertinente');
   if (i < 0) return 0;
   return p.linhas.filter(l => !l.titulo && !converter(l.valores[p.colunas[i].i], 'qtd')).length;
+}
+
+/** PQs (Documento de Origem) presentes nos itens da PX, com quantos itens cada. Linhas sem documento ficam de fora. */
+export function pqsDaPx(itens: Item[]): { doc: string; itens: number }[] {
+  const m = new Map<string, number>();
+  for (const i of itens) if (!i.titulo && i.pqdoc.trim()) m.set(i.pqdoc, (m.get(i.pqdoc) || 0) + 1);
+  return [...m.entries()].map(([doc, n]) => ({ doc, itens: n }));
+}
+
+/**
+ * Linhas a excluir ao tirar uma ou mais PQs da PX: os itens com esse Documento de Origem e os títulos que ficarem
+ * sem nenhum item embaixo (inclusive subníveis). Títulos que já estavam vazios antes só saem se forem dessas PQs.
+ */
+export function linhasDaExclusaoDePq(itens: Item[], docs: Set<string>): string[] {
+  const sai = new Set(itens.filter(i => !i.titulo && docs.has(i.pqdoc)).map(i => i.id));
+  const limpa = (s: string) => s.trim().replace(/\.+$/, '');
+  const comItens = (lista: Item[]) => {
+    const manter = new Set<string>();
+    let atual: string | null = null;
+    for (const it of lista) { if (it.titulo) { atual = it.id; continue; } if (atual) manter.add(atual); }
+    const titulos = lista.filter(i => i.titulo);
+    for (const t of titulos) if (manter.has(t.id)) {
+      const n = limpa(t.item);
+      for (const o of titulos) if (limpa(o.item) && n.startsWith(limpa(o.item) + '.')) manter.add(o.id);
+    }
+    return manter;
+  };
+  const antes = comItens(itens), depois = comItens(itens.filter(i => !sai.has(i.id)));
+  for (const t of itens) if (t.titulo && !depois.has(t.id) && (antes.has(t.id) || docs.has(t.pqdoc))) sai.add(t.id);
+  return itens.filter(i => sai.has(i.id)).map(i => i.id);
 }

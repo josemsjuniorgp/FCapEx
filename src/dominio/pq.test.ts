@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { lerExcel } from './excel';
-import { avaliar, bdiDaPlanilha, contarZerados, destinosIniciais, paraItens } from './pq';
+import { avaliar, bdiDaPlanilha, contarZerados, destinosIniciais, itemVazio, linhasDaExclusaoDePq, paraItens, pqsDaPx } from './pq';
+import type { Item } from './tipos';
 
 const PADRAO = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'prov', 'hh', 'pacote', 'tipo', 'orig', 'moeda', 'preco', 'bdi', 'bdiv', 'base', 'trib', 'parc', 'ger', 'chk']);
 const SIMPLES = new Set(['seq', 'pqdoc', 'item', 'area', 'subarea', 'ativo', 'desc', 'un', 'qtd', 'moeda', 'preco', 'bdi', 'base', 'parc', 'ger', 'chk']);
@@ -63,7 +64,7 @@ describe('leitura de PQ com cabeçalho', async () => {
     const [t1, t2, a] = itens;
     expect(t1.titulo && t2.titulo).toBe(true);
     for (const t of [t1, t2]) {
-      expect(t).toMatchObject({ qtd: null, un: '', area: '', subarea: '', tipo: '', pqdoc: '', preco: null });
+      expect(t).toMatchObject({ qtd: null, un: '', area: '', subarea: '', tipo: '', pqdoc: 'PQ-001', preco: null });
     }
     expect(a).toMatchObject({ titulo: false, qtd: 1, un: 'vb', area: '22', subarea: '2200', tipo: 'C', pqdoc: 'PQ-001' });
     expect(itens[4].qtd).toBe(12.5);
@@ -141,5 +142,24 @@ describe('BDI vindo da planilha', () => {
     expect(bdiDaPlanilha(0.33, bdis)).toBeNull();
     expect(bdiDaPlanilha('', bdis)).toBeNull();
     expect(bdiDaPlanilha('Outro', bdis)).toBeNull();
+  });
+});
+
+describe('Excluir PQ da PX', () => {
+  const T = (id: string, item: string, pqdoc = ''): Item => ({ ...itemVazio(id, 0), titulo: true, item, pqdoc });
+  const I = (id: string, item: string, pqdoc: string): Item => ({ ...itemVazio(id, 0), item, pqdoc });
+  // PQ-A: 1.1 (a1, a2) / PQ-B: 1.2 (b1) / título manual vazio 9 / linha manual m1 sob 1.2
+  const itens = [T('tA', '1.1', 'PQ-A'), I('a1', '1.1.1', 'PQ-A'), I('a2', '1.1.2', 'PQ-A'),
+    T('tB', '1.2', 'PQ-B'), I('b1', '1.2.1', 'PQ-B'), I('m1', '1.2.9', ''), T('tV', '9'), T('tAx', '3', 'PQ-A')];
+  it('lista as PQs da PX (sem as linhas manuais)', () => {
+    expect(pqsDaPx(itens)).toEqual([{ doc: 'PQ-A', itens: 2 }, { doc: 'PQ-B', itens: 1 }]);
+  });
+  it('apaga os itens da PQ e os títulos que ficaram vazios; mantém título com linha manual e título vazio manual', () => {
+    expect(linhasDaExclusaoDePq(itens, new Set(['PQ-A']))).toEqual(['tA', 'a1', 'a2', 'tAx']);
+    expect(linhasDaExclusaoDePq(itens, new Set(['PQ-B']))).toEqual(['b1']);
+  });
+  it('PX antiga (títulos sem documento): título fica vazio e sai junto, inclusive o título-pai', () => {
+    const velhos = [T('t1', '1'), T('t11', '1.1'), I('x', '1.1.1', 'PQ-X'), T('t2', '2'), I('y', '2.1', 'PQ-Y')];
+    expect(linhasDaExclusaoDePq(velhos, new Set(['PQ-X']))).toEqual(['t1', 't11', 'x']);
   });
 });

@@ -12,6 +12,7 @@ import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
 import type { Bdi, Frete, Resultado } from '../dominio/tipos';
 import { ImportarPq } from './ImportarPq';
+import { ExcluirPq } from './ExcluirPq';
 import { RenomearPx } from './RenomearPx';
 import { largurasAutomaticas } from '../app/larguras';
 import { FiltroColuna } from './FiltroColuna';
@@ -41,6 +42,7 @@ export function EditorPx() {
   const [sel, setSel] = useState<string | null>(null);
   const [painel, setPainel] = useState<'dados' | 'colunas' | null>(null);
   const [importar, setImportar] = useState(false);
+  const [excluirPq, setExcluirPq] = useState(false);
   const [editandoCab, setEditandoCab] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [perguntar, setPerguntar] = useState<string | null>(null);
@@ -218,6 +220,16 @@ export function EditorPx() {
     });
   }
 
+  /** Exclui de uma vez as linhas das PQs escolhidas (e os títulos que ficaram vazios). Uma ação no desfazer. */
+  async function excluirPqs(docs: string[], ids: string[]) {
+    const copias = itens.filter(i => ids.includes(i.id));
+    if (await acao(() => tirarItens(ids), `${plural(docs.length, 'PQ excluída', 'PQs excluídas')} (${plural(copias.length, 'linha', 'linhas')}).`)) {
+      setExcluirPq(false);
+      if (px) atualizarPx(px.id, {}).catch(() => {});
+      registrar({ rotulo: `Excluir PQ ${docs.join(', ')} (${plural(copias.length, 'linha', 'linhas')})`, desfazer: () => reporItens(copias), refazer: () => tirarItens(ids) });
+    }
+  }
+
   async function emitir() {
     if (!px || !t) return;
     setPerguntar(null);
@@ -390,6 +402,7 @@ export function EditorPx() {
       <div className="tools">
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
+        {editavel && <button className="btn" onClick={() => setExcluirPq(true)} title="Excluir de uma vez as linhas de uma ou mais PQs importadas">Excluir PQ</button>}
         {editavel && (
           <span className="desfazer-grupo">
             <button className="btn icone" aria-label="Desfazer" disabled={!hist.antes.length || ocupado} onClick={() => voltar('desfazer')}
@@ -538,6 +551,9 @@ export function EditorPx() {
         </aside>
       </div>
 
+      {excluirPq && editavel && (
+        <ExcluirPq itens={itens} res={res} onFechar={() => setExcluirPq(false)} onExcluir={excluirPqs} />
+      )}
       {importar && revAtual && empresa && (
         <ImportarPq empresaId={empresa.id} revisaoId={revAtual.id} modelo={modelo} itens={itens}
           onFechar={() => setImportar(false)} onImportado={importado} />
