@@ -65,8 +65,8 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
   inteiro (substituiu a caixa de Grupo e a busca). Sem ordenar: a ordem da PQ nunca muda. Títulos-pai dos itens
   filtrados continuam visíveis, com subtotal só do que está visível. Faixa "Filtros ativos" com etiquetas (✕) e
   "Limpar todos" (sem números); pílulas ok/incompletas/com erro = atalho do filtro da coluna Check. Filtros guardados
-  por PX no navegador. Com filtro ativo aparece uma 2ª linha de indicadores **"FILTRADO"** em verde-petróleo
-  (Bruto/Líquido R$ e US$, Itens, ok/incompletas/erro) só das linhas filtradas, com "% do projeto"; a linha do projeto
+  por PX no navegador. Com filtro ativo aparece uma 2ª linha de indicadores **"FILTRADO"**
+  (Bruto/Líquido R$ e US$, Itens, ok/incompletas/erro) só das linhas filtradas, em verde bem claro com valores em petróleo, com "% do projeto"; a linha do projeto
   fica acima.
 - Barra da PX: Inserir item · Importar PQ … Gerenciar colunas · Comparar PXs (compara revisões) · Exportar Excel ·
   Emitir nova revisão · Dados da PX.

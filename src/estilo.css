@@ -440,13 +440,18 @@ table.grid thead tr.h th.sticky.c1{padding-right:30px}
 .filtro-chip button:hover{background:rgba(0,0,0,.08);color:var(--ink)}
 table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 
-/* ---------- indicadores das linhas filtradas (verde-petróleo) ---------- */
-.kpis.kpis-filtro{padding-top:0;align-items:stretch}
+/* ---------- indicadores das linhas filtradas (verde bem claro, valores em petróleo) ---------- */
+.kpis.kpis-filtro{padding-top:12px;padding-bottom:12px;align-items:stretch}
 .kpis-filtro-rot{align-self:center;writing-mode:vertical-rl;transform:rotate(180deg);font:700 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;
   color:var(--cab-g);background:var(--accent-soft);border-radius:6px;padding:8px 4px}
-.kpi.moldura.filtro{background:var(--cab-g);border-color:var(--cab-g);color:#fff}
-.kpi.moldura.filtro::before{background:rgba(255,255,255,.35)}
-.kpi.moldura.filtro small{color:rgba(255,255,255,.82)}
-.kpi.moldura.filtro b{color:#fff}
-.kpi.moldura.filtro .kpi-pct{font-size:11px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;margin-top:1px}
+.kpi.moldura.filtro{background:var(--accent-soft);border-color:#b9dcdf}
+.kpi.moldura.filtro::before{background:var(--cab-g)}
+.kpi.moldura.filtro small{color:var(--cab-h-ink)}
+.kpi.moldura.filtro b{color:var(--cab-g)}
+.kpi.moldura.filtro .kpi-pct{font-size:11px;color:var(--cab-h-ink);font-variant-numeric:tabular-nums;margin-top:1px}
 .kpis-filtro-chk{align-self:center}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .kpi.moldura.filtro b{color:var(--accent)}:root:not([data-theme="light"]) .kpi.moldura.filtro{border-color:var(--cab-h-sep)}}
+:root[data-theme="dark"] .kpi.moldura.filtro b{color:var(--accent)}
+:root[data-theme="dark"] .kpi.moldura.filtro{border-color:var(--cab-h-sep)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .filtro-chip,:root:not([data-theme="light"]) .kpis-filtro-rot{color:var(--accent)}}
+:root[data-theme="dark"] .filtro-chip,:root[data-theme="dark"] .kpis-filtro-rot{color:var(--accent)}
