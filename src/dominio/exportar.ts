@@ -6,7 +6,7 @@
 import type ExcelJS from 'exceljs';
 import { bdiDe, bdiFinal, calcular, CORES_TITULO, gruposPorTitulo, niveisTitulos, totais } from './calculo';
 import { aderencia, calcularMaturidade, CLASSES, faixaTxt, nomeOrigem, ORIGENS, ROTULO_ADERENCIA } from './maturidade';
-import { OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
+import { CENTRALIZADAS, OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
 import type { Bdi, Item, Parametros, Resultado } from './tipos';
 
 export interface MoedaExportacao { codigo: string; nome: string; simbolo: string; cambio_brl: number | null }
@@ -199,7 +199,8 @@ function abaPx(
       const cel = row.getCell(i + 1);
       cel.font = { name: FONTE, size: 10, color: { argb: COR.tinta } };
       cel.border = borda();
-      cel.alignment = { vertical: 'middle', horizontal: c.num || c.t === 'calc' || c.t === 'tax' ? 'right' : c.k === 'seq' ? 'center' : 'left', indent: c.num || c.t === 'calc' || c.t === 'tax' || c.k === 'seq' ? 0 : 1 };
+      const centro = CENTRALIZADAS.includes(c.k);
+      cel.alignment = { vertical: 'middle', horizontal: centro ? 'center' : c.num || c.t === 'calc' || c.t === 'tax' ? 'right' : 'left', indent: c.num || c.t === 'calc' || c.t === 'tax' || centro ? 0 : 1 };
       if (it.titulo) {
         const cor = CORES_TITULO[(niveis.get(it.id) ?? 1) - 1];
         const letra = 'FF' + cor.letra;

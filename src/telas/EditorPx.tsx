@@ -7,7 +7,7 @@ import {
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, niveisTitulos, totais } from '../dominio/calculo';
-import { colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
+import { CENTRALIZADAS, colunasCompletas, idDoTributo, OBRIGATORIAS, OPCOES, type Coluna } from '../dominio/colunas';
 import { parseNum } from '../dominio/normalizacao';
 import { itemVazio } from '../dominio/pq';
 import type { Bdi, Frete, Resultado } from '../dominio/tipos';
@@ -578,13 +578,14 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, b
   c: Coluna; it: ItemPos; r: Resultado; editavel: boolean; moedas: [string, string][]; simbolo: string; fretes: Frete[]; bdis: Bdi[]; subtotal?: number;
   dica?: string; onSalvar: (v: unknown) => void;
 }) {
-  if (c.k === 'seq') return <td className="sticky c1 mono">{it.seq}</td>;
+  if (c.k === 'seq') return <td className="sticky c1 mono centro">{it.seq}</td>;
+  const centro = CENTRALIZADAS.includes(c.k) ? ' centro' : '';
   // linha de título: só Item PQ e Descrição, sem campo para preencher
   if (it.titulo) {
     if (c.k === 'item' || c.k === 'desc') {
       return editavel
-        ? <td className="in-c"><Entrada valor={(it as unknown as Record<string, string>)[c.k]} onSalvar={onSalvar} /></td>
-        : <td className="txt">{(it as unknown as Record<string, string>)[c.k]}</td>;
+        ? <td className={'in-c' + centro}><Entrada valor={(it as unknown as Record<string, string>)[c.k]} onSalvar={onSalvar} /></td>
+        : <td className={'txt' + centro}>{(it as unknown as Record<string, string>)[c.k]}</td>;
     }
     if (subtotal !== undefined) return <td className="calc subtot" title="Subtotal do grupo (itens visíveis)">{nf(subtotal, 2)}</td>;
     return <td />;
@@ -692,9 +693,9 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, b
       </td>
     );
   }
-  if (!editavel) return <td className="txt">{String(valor ?? '')}</td>;
+  if (!editavel) return <td className={'txt' + centro}>{String(valor ?? '')}</td>;
   return (
-    <td className={'in-c' + (c.req && !valor ? ' miss' : '')} title={c.k === 'desc' ? String(valor) : undefined}>
+    <td className={'in-c' + centro + (c.req && !valor ? ' miss' : '')} title={c.k === 'desc' ? String(valor) : undefined}>
       <Entrada valor={String(valor ?? '')} onSalvar={onSalvar} />
     </td>
   );

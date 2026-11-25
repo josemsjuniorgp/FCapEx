@@ -47,6 +47,9 @@ export const COLUNAS: Coluna[] = [
 
 export const coluna = (k: string) => COLUNAS.find(c => c.k === k);
 
+/** Colunas com o conteúdo centralizado (na grade e no Excel). */
+export const CENTRALIZADAS = ['seq', 'item', 'area', 'subarea', 'ativo', 'un', 'pacote'];
+
 /** Colunas que todo modelo precisa ter. */
 export const OBRIGATORIAS = ['seq', 'desc', 'qtd', 'preco', 'ger', 'chk'];
 

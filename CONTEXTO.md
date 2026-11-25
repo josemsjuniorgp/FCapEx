@@ -104,6 +104,7 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
   Quantidade · Provisão · HH · Pacote (só texto) · Tipo de Trabalho (F, C, S, T, M) · Natureza (N, I) · Moeda ·
   Frete nacional + valor · Frete internacional + valor · Preço unit. · BDI (lista) · BDI (R$) · Preço total s/ trib. ·
   uma coluna por tributo (opcional) · Tributos · Total parcial · Total geral · Check (com explicação ao passar o mouse).
+- **Alinhamento:** Nº, Item PQ, Área, Subárea, Ativo, Unid e Pacote centralizados (grade e Excel); números à direita.
 - **Larguras automáticas** pelo conteúdo (números nunca cortados; textos longos quebram linha); arrastar a borda
   do cabeçalho ajusta; duplo clique volta ao automático; ajuste salvo por PX no navegador.
 - A grade ocupa a altura da tela (barra horizontal sempre no rodapé; cabeçalho fixo).

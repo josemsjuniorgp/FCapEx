@@ -516,3 +516,6 @@ table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 .excluir-pq tr.sel td{background:var(--err-soft)}
 .btn.danger-cheio{background:var(--err);border-color:var(--err);color:#fff}
 .btn.danger-cheio:disabled{opacity:.45}
+
+/* ---------- colunas centralizadas (Nº, Item PQ, Área, Subárea, Ativo, Unid, Pacote) ---------- */
+table.grid td.centro,table.grid td.centro textarea,table.grid td.centro input{text-align:center}
