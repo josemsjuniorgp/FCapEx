@@ -53,7 +53,7 @@ const S = process.argv[2];
     await trilha.getByText('Planta Piloto').waitFor();
     await trilha.getByRole('link', { name: 'Siderúrgica Exemplo' }).click();
     await p.getByRole('heading', { name: 'Siderúrgica Exemplo' }).waitFor();
-    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.getByRole('button', { name: 'Editar', exact: true }).first().click();
     await p.locator('.px-cab').getByText('Rev 0 · em edição').waitFor();
     await p.screenshot({ path: `${S}/shots/15-cabecalho.png` });
   });

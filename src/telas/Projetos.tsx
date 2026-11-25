@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brlCurto, Confirmar, dataHora, iniciais, plural, useAcao, Vazio } from '../app/ui';
 import {
-  criarCliente, criarProjeto, excluirCliente, excluirProjeto, excluirPx, listarClientes, listarItens,
+  atualizarProjeto, criarCliente, criarProjeto, excluirCliente, excluirProjeto, excluirPx, listarClientes, listarItens,
   listarProjetos, listarPxs, revisoesDaEmpresa, type Cliente, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { totais, type Totais } from '../dominio/calculo';
@@ -24,6 +24,9 @@ export function Projetos() {
   const [novoCliente, setNovoCliente] = useState('');
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [novoProjeto, setNovoProjeto] = useState<string | null>(null);
+  const [novaFase, setNovaFase] = useState('');
+  const [novaClasse, setNovaClasse] = useState<number | null>(null);
+  const [editProj, setEditProj] = useState<{ id: string; nome: string; fase: string; classe: number | null } | null>(null);
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [novaPx, setNovaPx] = useState<string | null>(null);
   const [renomear, setRenomear] = useState<string | null>(null);
@@ -59,7 +62,9 @@ export function Projetos() {
   }
   async function addProjeto() {
     if (!empresa || !cliente || !novoProjeto?.trim()) return;
-    if (await acao(() => criarProjeto(empresa.id, cliente, novoProjeto), 'Projeto criado.')) { setNovoProjeto(null); carregar(); }
+    if (await acao(() => criarProjeto(empresa.id, cliente, novoProjeto, novaFase, novaClasse), 'Projeto criado.')) {
+      setNovoProjeto(null); setNovaFase(''); setNovaClasse(null); carregar();
+    }
   }
   const apagar = async (fn: () => Promise<unknown>, msg: string) => { setPerguntar(null); if (await acao(fn, msg)) carregar(); };
 
@@ -120,6 +125,9 @@ export function Projetos() {
           <div className="card row" style={{ padding: 12 }}>
             <input className="in" autoFocus style={{ flex: 1 }} placeholder="Nome do projeto" value={novoProjeto}
               onChange={e => setNovoProjeto(e.target.value)} onKeyDown={e => e.key === 'Enter' && addProjeto()} />
+            <input className="in" style={{ width: 200 }} placeholder="Fase (ex.: FEL 2, Projeto Básico)" aria-label="Fase do projeto" maxLength={120}
+              value={novaFase} onChange={e => setNovaFase(e.target.value)} onKeyDown={e => e.key === 'Enter' && addProjeto()} />
+            <SeletorClasse valor={novaClasse} onMudar={setNovaClasse} />
             <button className="btn primary" onClick={addProjeto} disabled={!novoProjeto.trim()}>Criar projeto</button>
             <button className="btn" onClick={() => setNovoProjeto(null)}>Cancelar</button>
           </div>
@@ -131,10 +139,29 @@ export function Projetos() {
           return (
             <article className="card proj" key={p.id}>
               <div className="row">
-                <h2>{p.nome}</h2><span className="note">{plural(lista.length, 'PX', 'PX')}</span><span className="spacer" />
+                <h2>{p.nome}</h2>
+                <span className="chip fase-chip" title="Fase e classe AACE do projeto (usadas na maturidade)">
+                  {p.fase || 'fase não informada'}{p.classe ? ` · Classe ${p.classe}` : ' · sem classe'}</span>
+                <span className="note">{plural(lista.length, 'PX', 'PX')}</span><span className="spacer" />
+                {podeEditar && <button className="btn small" onClick={() => setEditProj({ id: p.id, nome: p.nome, fase: p.fase, classe: p.classe })}>Editar projeto</button>}
                 {podeEditar && <button className="btn small primary" onClick={() => setNovaPx(p.id)}>Nova PX</button>}
                 {podeEditar && <button className="btn small danger" onClick={() => setPerguntar('p:' + p.id)}>Excluir projeto</button>}
               </div>
+              {editProj?.id === p.id && (
+                <div className="row group-box" style={{ alignItems: 'flex-end' }}>
+                  <label className="stack" style={{ gap: 3, flex: 1 }}><span className="note">Nome</span>
+                    <input className="in" aria-label="Nome do projeto" value={editProj.nome} onChange={e => setEditProj({ ...editProj, nome: e.target.value })} /></label>
+                  <label className="stack" style={{ gap: 3 }}><span className="note">Fase</span>
+                    <input className="in" style={{ width: 200 }} aria-label="Fase do projeto" maxLength={120} placeholder="ex.: FEL 2, Projeto Básico"
+                      value={editProj.fase} onChange={e => setEditProj({ ...editProj, fase: e.target.value })} /></label>
+                  <label className="stack" style={{ gap: 3 }}><span className="note">Classe AACE</span>
+                    <SeletorClasse valor={editProj.classe} onMudar={c => setEditProj({ ...editProj, classe: c })} /></label>
+                  <button className="btn" onClick={() => setEditProj(null)}>Cancelar</button>
+                  <button className="btn primary" disabled={!editProj.nome.trim()} onClick={async () => {
+                    if (await acao(() => atualizarProjeto(editProj.id, { nome: editProj.nome, fase: editProj.fase, classe: editProj.classe }), 'Projeto salvo.')) { setEditProj(null); carregar(); }
+                  }}>Salvar</button>
+                </div>
+              )}
               {perguntar === 'p:' + p.id && (
                 <Confirmar msg={<>Excluir o projeto <b>{p.nome}</b> e {plural(lista.length, 'PX', 'PX')}?</>} sim="Excluir projeto"
                   onNao={() => setPerguntar(null)} onSim={() => apagar(() => excluirProjeto(p.id), 'Projeto excluído.')} />
@@ -176,5 +203,15 @@ export function Projetos() {
           onFechar={() => setNovaPx(null)} onCriada={id => ir(`/px/${id}`)} />
       )}
     </div>
+  );
+}
+
+/** Lista das classes AACE (5 = conceitual … 1 = definitiva). */
+export function SeletorClasse({ valor, onMudar }: { valor: number | null; onMudar: (c: number | null) => void }) {
+  return (
+    <select value={valor ?? ''} aria-label="Classe AACE" onChange={e => onMudar(e.target.value ? +e.target.value : null)}>
+      <option value="">Classe AACE…</option>
+      {[5, 4, 3, 2, 1].map(c => <option key={c} value={c}>Classe {c}</option>)}
+    </select>
   );
 }

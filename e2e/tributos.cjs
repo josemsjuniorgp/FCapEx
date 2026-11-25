@@ -40,7 +40,7 @@ const num = t => parseFloat(t.replace(/[^\d,-]/g, '').replace(',', '.'));
   };
   await passo('inserir colunas ISS e CSLL na PX', async () => {
     await p.getByRole('link', { name: 'Projetos', exact: true }).click();
-    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.getByRole('button', { name: 'Editar', exact: true }).first().click();
     await p.getByRole('button', { name: 'Gerenciar colunas' }).click();
     await p.locator('.side-panel').getByLabel('ISS (R$)').first().check(); await p.getByText('Coluna inserida.').waitFor();
     await p.locator('.side-panel').getByLabel('CSLL (R$)').first().check(); await p.waitForTimeout(600);

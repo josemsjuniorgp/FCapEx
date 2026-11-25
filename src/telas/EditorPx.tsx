@@ -15,6 +15,7 @@ import { ImportarPq } from './ImportarPq';
 import { RenomearPx } from './RenomearPx';
 import { largurasAutomaticas } from '../app/larguras';
 import { FiltroColuna } from './FiltroColuna';
+import { aderencia, calcularMaturidade, ORIGENS, pctTxt, ROTULO_ADERENCIA } from '../dominio/maturidade';
 import { aplicarFiltros, colunaNumerica, resumoFiltro, valoresDaColuna, type FiltroColuna as DefFiltro, type Filtros } from '../dominio/filtros';
 
 const ROTULO_CHK = { OK: ['p-ok', 'OK'], INCOMPLETO: ['p-warn', 'Incompleto'], ERRO: ['p-err', 'Erro de classificação'], TITULO: ['p-mut', 'Título'] } as const;
@@ -104,6 +105,7 @@ export function EditorPx() {
     }
     return m;
   }, [itens, passa, res, grupos, ramo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mat = useMemo(() => calcularMaturidade(itens, res), [itens, res]);
   const chkAtivo = filtros.chk?.tipo === 'valores' && filtros.chk.valores.length === 1 ? filtros.chk.valores[0] : null;
   const atalhoCheck = (k: keyof typeof ROT_CHECK) => filtrar('chk', chkAtivo === ROT_CHECK[k] ? null : { tipo: 'valores', valores: [ROT_CHECK[k]] });
 
@@ -155,7 +157,7 @@ export function EditorPx() {
       const cliente = clientes.find(c => c.id === projeto?.cliente_id);
       const { gerarExcel, nomeArquivo } = await import('../dominio/exportar');
       const buf = await gerarExcel({
-        empresa: empresa.nome, cliente: cliente?.nome ?? '', projeto: projeto?.nome ?? '',
+        empresa: empresa.nome, cliente: cliente?.nome ?? '', projeto: projeto?.nome ?? '', fase: projeto?.fase ?? '', classe: projeto?.classe ?? null,
         px: { codigo: px.codigo, nome: px.nome, modelo_nome: px.modelo_nome, colunas: px.colunas },
         revisao: revAtual?.numero ?? 0, emEdicao: !!revAtual, itens, parametros, moedas,
       });
@@ -241,6 +243,16 @@ export function EditorPx() {
         <div className="kpi moldura usd" title={usd ? `Total Geral Líquido ÷ câmbio do dólar (R$ ${nf(usd, 4)})` : 'Cadastre o câmbio do dólar em Parâmetros'}>
           <small>Total Geral Líquido (US$)</small><b>{usd ? usdCurto(t.liq / usd) : '—'}</b></div>
         <div className="kpi moldura neutro"><small>Itens</small><b>{itens.length - t.tit}</b></div>
+        {(() => {
+          const ad = aderencia(mat.pct, projeto?.classe);
+          return (
+            <Link to={`/maturidade?px=${px.id}`} className={'kpi moldura maturidade ' + (ad ?? 'sem')} title="Ver a maturidade em detalhe">
+              <small>Maturidade · {projeto?.fase || 'fase não informada'}{projeto?.classe ? ` · Classe ${projeto.classe}` : ''}</small>
+              <span className="mat-kpi-linha"><b>{mat.pct === null ? '—' : `${pctTxt(mat.pct)} firme`}</b>
+                <span className="mat-selo">{ad ? ROTULO_ADERENCIA[ad] : projeto?.classe ? 'sem valores' : 'informe a classe'}</span></span>
+            </Link>
+          );
+        })()}
         <div className="row">
           <button className="pill p-ok" aria-pressed={chkAtivo === ROT_CHECK.OK} title="Filtrar a coluna Check: OK" onClick={() => atalhoCheck('OK')}><i />{t.ok} ok</button>
           <button className="pill p-warn" aria-pressed={chkAtivo === ROT_CHECK.INCOMPLETO} title="Filtrar a coluna Check: Incompleto" onClick={() => atalhoCheck('INCOMPLETO')}><i />{t.inc} incompletas</button>
@@ -511,6 +523,18 @@ function Celula({ c, it, r, editavel, moedas, simbolo, dica, onSalvar, fretes, b
         <select value={atual ? atual.id : ''} onChange={e => onSalvar(e.target.value || null)} title={atual ? rotuloBdi(atual) : 'Sem BDI'} aria-label="BDI da linha">
           <option value="">-</option>
           {bdis.map(b => <option key={b.id} value={b.id}>{rotuloBdi(b)}</option>)}
+        </select>
+      </td>
+    );
+  }
+  if (c.k === 'origem') {
+    const o = ORIGENS.find(x => x.k === it.origem);
+    if (!editavel) return <td className="txt">{o?.nome ?? ''}</td>;
+    return (
+      <td className="in-c">
+        <select value={o ? o.k : ''} onChange={e => onSalvar(e.target.value)} title={o?.nome ?? 'Origem do preço não informada'} aria-label="Origem do preço">
+          <option value="">escolher</option>
+          {ORIGENS.map(x => <option key={x.k} value={x.k}>{x.nome}</option>)}
         </select>
       </td>
     );

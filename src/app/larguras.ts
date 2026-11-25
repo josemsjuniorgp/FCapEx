@@ -5,6 +5,7 @@
 import { idDoTributo, OPCOES, type Coluna } from '../dominio/colunas';
 import type { Bdi, Frete, Item, Resultado } from '../dominio/tipos';
 import { bdiFinal } from '../dominio/calculo';
+import { nomeOrigem } from '../dominio/maturidade';
 
 const FONTE = '13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 const FONTE_CAB = '600 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -51,6 +52,7 @@ function textoDaCelula(c: Coluna, it: Item, r: Resultado | undefined, cx: Contex
     return o ? `(${o[0]}) ${o[1]}` : v ? `(${v}) inválido` : 'escolher';
   }
   if (c.k === 'moeda') { const m = cx.moedas.find(x => x.codigo === v); return m ? `${m.nome} (${m.simbolo})` : 'escolher'; }
+  if (c.k === 'origem') return nomeOrigem(String(v ?? '')) || 'escolher';
   if (c.k === 'bdi') { const b = cx.bdis?.find(x => x.id === v); return b ? `${b.nome} (${nf(bdiFinal(b) * 100, 2)}%)` : '-'; }
   if (c.k === 'fnac' || c.k === 'fint') { const f = cx.fretes.find(x => x.id === v); return f ? `${f.nome}${f.local ? ` · ${f.local}` : ''}` : 'sem frete'; }
   if (c.num) {
@@ -77,7 +79,7 @@ export function largurasAutomaticas(colunas: Coluna[], cx: ContextoLargura): Rec
       const w = medir(t, it.titulo ? `600 ${FONTE}` : FONTE);
       if (w > maior) maior = w;
     }
-    const escolha = ['tipo', 'orig', 'moeda', 'fnac', 'fint', 'bdi'].includes(c.k);
+    const escolha = ['tipo', 'orig', 'moeda', 'fnac', 'fint', 'bdi', 'origem'].includes(c.k);
     const numerica = c.num || c.t === 'calc' || c.t === 'tax';
     // números usam dígitos de largura igual (tabular), um pouco mais largos que os medidos: folga proporcional
     if (numerica) maior = maior * 1.1 + 6;

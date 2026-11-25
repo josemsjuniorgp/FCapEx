@@ -3,6 +3,7 @@ import { ProvedorSessao, useSessao } from './app/Sessao';
 import { iniciais, ProvedorAviso } from './app/ui';
 import { NOME_PAPEL } from './dados/api';
 import { PaginaBdi } from './telas/Bdi';
+import { PaginaMaturidade } from './telas/Maturidade';
 import { Biblioteca } from './telas/Biblioteca';
 import { Comparar } from './telas/Comparar';
 import { DefinirSenha } from './telas/DefinirSenha';
@@ -18,6 +19,7 @@ const MENU: [string, string, string][] = [
   ['/', 'Projetos', 'M3 7h18M3 12h18M3 17h12'],
   ['/biblioteca', 'Biblioteca', 'M4 4h6l2 2h8v14H4z'],
   ['/bdi', 'BDI', 'M5 19L19 5M9 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM19 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z'],
+  ['/maturidade', 'Maturidade', 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
   ['/parametros', 'Parâmetros', 'M4 6h16M4 12h10M4 18h7'],
   ['/equipe', 'Equipe', 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 1 0 0-6M22 20c0-3-2-5-5-5'],
 ];
@@ -61,6 +63,7 @@ function Shell() {
                 <Route path="/px/:id/comparar" element={<Comparar />} />
                 <Route path="/biblioteca" element={<Biblioteca />} />
                 <Route path="/bdi" element={<PaginaBdi />} />
+                <Route path="/maturidade" element={<PaginaMaturidade />} />
                 <Route path="/parametros" element={<Parametros />} />
                 <Route path="/equipe" element={<Equipe />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

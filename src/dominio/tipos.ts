@@ -23,6 +23,7 @@ export interface Item {
   tribLigados: Record<string, boolean>;
   fnac: string | null;  // id do frete nacional escolhido
   fint: string | null;  // id do frete internacional escolhido
+  origem: string;       // origem do preço (ver maturidade.ts); '' = não informada
 }
 
 /** Tributo da empresa: alíquota e onde se aplica. */

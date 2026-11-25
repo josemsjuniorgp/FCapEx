@@ -5,6 +5,7 @@
  */
 import type ExcelJS from 'exceljs';
 import { bdiDe, bdiFinal, calcular, CORES_TITULO, gruposPorTitulo, niveisTitulos, totais } from './calculo';
+import { aderencia, calcularMaturidade, CLASSES, faixaTxt, nomeOrigem, ORIGENS, ROTULO_ADERENCIA } from './maturidade';
 import { OPCOES, colunasCompletas, idDoTributo, type Coluna } from './colunas';
 import type { Bdi, Item, Parametros, Resultado } from './tipos';
 
@@ -14,6 +15,9 @@ export interface DadosExportacao {
   empresa: string;
   cliente: string;
   projeto: string;
+  /** fase e classe AACE do projeto (maturidade) */
+  fase?: string;
+  classe?: number | null;
   px: { codigo: string; nome: string; modelo_nome: string; colunas: string[] };
   revisao: number;
   emEdicao: boolean;
@@ -235,6 +239,7 @@ function abaPx(
       const v = (it as unknown as Record<string, unknown>)[c.k];
       if (c.k === 'seq') cel.value = it.seq;
       else if (c.k === 'tipo' || c.k === 'orig') cel.value = v ? rotuloOpcao(c.k, String(v)) : null;
+      else if (c.k === 'origem') cel.value = nomeOrigem(String(v ?? '')) || null;
       else if (c.k === 'bdi') { const b = bdiDe(d.parametros, it.bdi); cel.value = b ? `${b.nome} (${pctBr(bdiFinal(b))})` : '-'; }
       else if (c.k === 'fnac' || c.k === 'fint') { const f = d.parametros.fretes.find(x => x.id === v); cel.value = f ? `${f.nome}${f.local ? ` · ${f.local}` : ''}` : null; }
       else if (c.num) {
@@ -368,6 +373,15 @@ function abaResumo(
     // chave = id do BDI; 1ª coluna mostra o BDI final (%), 2ª o nome
     agrupar(i => bdiDe(d.parametros, i.bdi)?.id ?? '', k => bdiDe(d.parametros, k)?.nome ?? '', 'Por BDI', 'BDI final', 'sem BDI (-)',
       k => { const b = bdiDe(d.parametros, k); return b ? pctBr(bdiFinal(b)) : ''; });
+  }
+  if (cols.has('origem')) {
+    const m = calcularMaturidade(d.itens, res), ad = aderencia(m.pct, d.classe);
+    tabela('Maturidade da PX', ['Fase', 'Classe AACE', '% do valor com preço firme', 'Meta de cotações firmes', 'Situação'],
+      [[d.fase || '(não informada)', d.classe ? `Classe ${d.classe}` : '(não informada)', m.pct, d.classe ? faixaTxt(CLASSES[d.classe].meta) : '—',
+        ad ? ROTULO_ADERENCIA[ad] : d.classe ? 'sem valores' : 'informe a classe do projeto']],
+      [null, null, '0.0%', null, null]);
+    agrupar(i => (ORIGENS.some(o => o.k === i.origem) ? i.origem : ''), k => nomeOrigem(k), 'Por origem do preço', 'Origem', 'sem origem informada',
+      k => ORIGENS.find(o => o.k === k)?.curto ?? k);
   }
   agrupar(i => i.moeda || padrao('moeda', 'BRL'), k => d.moedas.find(m => m.codigo === k)?.nome ?? 'sem cadastro', 'Por moeda', 'Moeda');
 

@@ -455,3 +455,49 @@ table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 :root[data-theme="dark"] .kpi.moldura.filtro{border-color:var(--cab-h-sep)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .filtro-chip,:root:not([data-theme="light"]) .kpis-filtro-rot{color:var(--accent)}}
 :root[data-theme="dark"] .filtro-chip,:root[data-theme="dark"] .kpis-filtro-rot{color:var(--accent)}
+
+/* ---------- maturidade ---------- */
+.kpi.moldura.maturidade{min-width:200px;text-decoration:none;color:inherit;cursor:pointer}
+.kpi.moldura.maturidade:hover{border-color:var(--accent)}
+.kpi.moldura.maturidade .mat-selo{align-self:flex-start;margin-top:3px;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--calc);color:var(--muted)}
+.maturidade.muito_abaixo,.mat-st.muito_abaixo,.mat-card.muito_abaixo,.mat-barra.muito_abaixo{--mat:var(--err);--mat-bg:var(--err-soft)}
+.maturidade.abaixo,.mat-st.abaixo,.mat-card.abaixo,.mat-barra.abaixo{--mat:var(--warn);--mat-bg:var(--warn-soft)}
+.maturidade.dentro,.mat-st.dentro,.mat-card.dentro,.mat-barra.dentro{--mat:var(--ok);--mat-bg:var(--ok-soft)}
+.maturidade.acima,.mat-st.acima,.mat-card.acima,.mat-barra.acima{--mat:#3f4f8f;--mat-bg:#e6eaf7}
+.kpi.moldura.maturidade::before{background:var(--mat,var(--line))}
+.kpi.moldura.maturidade .mat-selo{background:var(--mat-bg,var(--calc));color:var(--mat,var(--muted))}
+.mat-st{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;background:var(--mat-bg,var(--calc));color:var(--mat,var(--muted));white-space:nowrap}
+.fase-chip{font-size:12px;font-weight:500;color:var(--muted)}
+.mat-lado{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+.mat-lista{padding:16px;display:flex;flex-direction:column;gap:14px}
+.mat-cli h3{margin-bottom:6px}
+.mat-proj{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.mat-proj-cab{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px}
+.mat-linha{display:grid;grid-template-columns:150px minmax(0,1fr) 160px 48px 170px;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;border-radius:6px;padding:7px 6px;color:var(--ink);cursor:pointer}
+.mat-linha:hover{background:var(--calc)} .mat-linha.sel{background:var(--accent-soft)}
+.mat-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mat-pct{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.mat-linha .mat-st{justify-self:start}
+.mat-barra{position:relative;display:block;height:9px;border-radius:5px;background:var(--calc)}
+.mat-barra .meta{position:absolute;top:-3px;bottom:-3px;border:1.5px dashed var(--cab-g);border-radius:3px;background:rgba(11,107,115,.07)}
+.mat-barra .val{position:absolute;top:0;bottom:0;left:0;border-radius:5px;background:var(--mat,var(--muted))}
+.mat-ref{padding:16px;display:flex;flex-direction:column;gap:10px}
+.mat-ref tr.sel td{background:var(--accent-soft);font-weight:600}
+.mat-card{position:relative;padding:16px 18px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.mat-card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--mat,var(--accent))}
+.mat-card-cab{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.mat-card-cab h2{margin:2px 0}
+.mat-big{font-size:30px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.mat-big span{font-size:13px;font-weight:500;color:var(--muted)}
+.mat-barra-g .mat-barra{height:14px;border-radius:7px}
+.mat-escala{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.mat-mix{display:flex;height:12px;border-radius:6px;overflow:hidden}
+.mat-mix i{display:block;height:100%}
+.mat-leg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px}
+.mat-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+@media (max-width:1100px){.mat-lado{grid-template-columns:1fr}}
+.mat-ref table{width:100%;font-size:12.5px}
+.mat-ref th,.mat-ref td{white-space:nowrap;padding-left:6px;padding-right:6px}
+.mat-card a.btn,.kpi.moldura.maturidade{text-decoration:none}
+.mat-kpi-linha{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.kpi.moldura.maturidade .mat-kpi-linha .mat-selo{margin-top:0}

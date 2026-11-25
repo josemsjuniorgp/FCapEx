@@ -6,6 +6,7 @@ import { COLUNAS, coluna } from './colunas';
 import { normMoeda, normOrig, normTipo, normTxt, parseNum, vazio } from './normalizacao';
 import type { Bdi, Item } from './tipos';
 import { bdiFinal } from './calculo';
+import { normOrigem } from './maturidade';
 
 export interface Celula { txt: string; raw: unknown }
 export type Matriz = Celula[][];
@@ -33,6 +34,7 @@ const MAPA: [string, RegExp][] = [
   ['preco', /(preco|valor|custo).*unit|^p\.? ?u\.?$/],
   ['moeda', /^moeda/],
   ['tipo', /^tipo( de trabalho)?$|forn.*mont/],
+  ['origem', /^origem do preco|^fonte do preco|^tipo de cotacao|^origem da cotacao/],
   ['orig', /^n ?\/ ?i$|^nacional|^origem|^natureza/],
   ['pacote', /^pacote/],
   ['bdiv', /^bdi.*(r\$|valor)/],
@@ -214,6 +216,7 @@ function converter(cel: Celula | undefined, destino: string): string | number | 
   if (destino === 'moeda') return normMoeda(s);
   if (destino === 'tipo') return normTipo(s);
   if (destino === 'orig') return normOrig(s);
+  if (destino === 'origem') return normOrigem(s);
   if (destino === 'bdi') return typeof cel?.raw === 'number' ? cel.raw : s;
   return s;
 }
@@ -238,7 +241,7 @@ export function bdiDaPlanilha(v: unknown, bdis: Bdi[]): string | null {
 
 export const itemVazio = (id: string, seq: number): Item => ({
   id, seq, titulo: false, pqdoc: '', item: '', area: '', subarea: '', ativo: '', desc: '', un: '',
-  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null, tribLigados: {}, fnac: null, fint: null,
+  qtd: null, prov: null, hh: null, pacote: '', tipo: '', orig: '', moeda: '', preco: null, bdi: null, tribLigados: {}, fnac: null, fint: null, origem: '',
 });
 
 export interface OpcoesImportacao {

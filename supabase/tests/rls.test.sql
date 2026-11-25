@@ -276,3 +276,15 @@ select public.emitir_revisao((select v from ids where k='pxt'), 0);
 select pg_temp.confere((select count(*) from public.itens i join public.revisoes r on r.id = i.revisao_id
   where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com BDI' and i.bdi_id is null) = 1, 'BDI excluído: item copiado sem BDI');
 reset role;
+
+-- 20) Maturidade: classe e fase no projeto (orçamentista edita), origem do preço validada e copiada na revisão
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+update public.projetos set fase = 'Projeto Básico', classe = 3 where id = (select v from ids where k='projA');
+select pg_temp.confere((select classe from public.projetos where id = (select v from ids where k='projA')) = 3, 'orçamentista define classe e fase');
+select pg_temp.deve_falhar(format($q$update public.projetos set classe = 6 where id = %L$q$, (select v from ids where k='projA')), 'classe AACE fora de 1 a 5');
+select pg_temp.deve_falhar(format($q$update public.itens set origem = 'chute' where revisao_id in (select id from public.revisoes where px_id = %L and emitida_em is null)$q$, (select v from ids where k='pxt')), 'origem do preço inválida');
+update public.itens set origem = 'firme' where descricao = 'Com frete' and revisao_id in (select id from public.revisoes where px_id = (select v from ids where k='pxt') and emitida_em is null);
+select public.emitir_revisao((select v from ids where k='pxt'), 0);
+select pg_temp.confere((select origem from public.itens i join public.revisoes r on r.id = i.revisao_id
+  where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com frete') = 'firme', 'revisão nova copia a origem do preço');
+reset role;

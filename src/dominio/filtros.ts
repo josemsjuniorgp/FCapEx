@@ -8,6 +8,7 @@
  */
 import { bdiFinal } from './calculo';
 import { OPCOES, idDoTributo, type Coluna } from './colunas';
+import { nomeOrigem } from './maturidade';
 import { normTxt } from './normalizacao';
 import type { Bdi, Frete, Item, Resultado } from './tipos';
 
@@ -52,6 +53,7 @@ export function valorExibido(c: Coluna, it: Item, cx: ContextoFiltro): string {
   const v = (it as unknown as Record<string, unknown>)[c.k];
   if (c.k === 'chk') { const r = cx.res.get(it.id); return r ? ROT_CHK[r.chk] : ''; }
   if (c.k === 'tipo' || c.k === 'orig') { const o = OPCOES[c.k].find(([k]) => k === v); return o ? `(${o[0]}) ${o[1]}` : String(v ?? ''); }
+  if (c.k === 'origem') return nomeOrigem(String(v ?? ''));
   if (c.k === 'moeda') { const m = cx.moedas.find(x => x.codigo === v); return m ? `${m.nome} (${m.simbolo})` : String(v ?? ''); }
   if (c.k === 'fnac' || c.k === 'fint') { const f = cx.fretes.find(x => x.id === v); return f ? `${f.nome}${f.local ? ` · ${f.local}` : ''}` : ''; }
   if (c.k === 'bdi') { const b = cx.bdis.find(x => x.id === v); return b ? `${b.nome} (${nf(bdiFinal(b) * 100, 2)}%)` : ''; }

@@ -9,7 +9,7 @@ export const NOME_PAPEL: Record<Papel, string> = {
 
 export interface Empresa { id: string; nome: string; papel: Papel }
 export interface Cliente { id: string; nome: string }
-export interface Projeto { id: string; cliente_id: string; nome: string }
+export interface Projeto { id: string; cliente_id: string; nome: string; fase: string; classe: number | null }
 export interface Modelo { id: string; empresa_id: string | null; nome: string; colunas: string[] }
 export interface Px {
   id: string; projeto_id: string; codigo: string; nome: string; modelo_nome: string;
@@ -157,9 +157,12 @@ export const criarCliente = async (emp: string, nome: string) =>
 export const excluirCliente = async (id: string) => ok(await supabase.from('clientes').delete().eq('id', id));
 
 export const listarProjetos = async (emp: string) =>
-  ok(await supabase.from('projetos').select('id, cliente_id, nome').eq('empresa_id', emp).order('criado_em')) as Projeto[];
-export const criarProjeto = async (emp: string, cliente_id: string, nome: string) =>
-  ok(await supabase.from('projetos').insert({ empresa_id: emp, cliente_id, nome: nome.trim() }));
+  ok(await supabase.from('projetos').select('id, cliente_id, nome, fase, classe').eq('empresa_id', emp).order('criado_em')) as Projeto[];
+export const criarProjeto = async (emp: string, cliente_id: string, nome: string, fase = '', classe: number | null = null) =>
+  ok(await supabase.from('projetos').insert({ empresa_id: emp, cliente_id, nome: nome.trim(), fase: fase.trim(), classe }));
+/** Altera nome, fase e classe AACE do projeto. */
+export const atualizarProjeto = async (id: string, campos: { nome?: string; fase?: string; classe?: number | null }) =>
+  ok(await supabase.from('projetos').update({ ...campos, ...(campos.nome !== undefined ? { nome: campos.nome.trim() } : {}), ...(campos.fase !== undefined ? { fase: campos.fase.trim() } : {}) }).eq('id', id));
 export const excluirProjeto = async (id: string) => ok(await supabase.from('projetos').delete().eq('id', id));
 
 export const listarModelos = async () =>
@@ -195,7 +198,7 @@ interface ItemDb {
   quantidade: number | null; provisao: number | null; hh: number | null; pacote: string;
   tipo: string; natureza: string; moeda: string; preco: number | null; bdi_id: string | null;
   tributos_ligados: Record<string, boolean> | null;
-  frete_nacional: string | null; frete_internacional: string | null;
+  frete_nacional: string | null; frete_internacional: string | null; origem: string | null;
 }
 export interface ItemPos extends Item { posicao: number }
 
@@ -205,18 +208,18 @@ const doBanco = (r: ItemDb): ItemPos => ({
   area: r.area, subarea: r.subarea, ativo: r.ativo, desc: r.descricao, un: r.unidade,
   qtd: num(r.quantidade), prov: num(r.provisao), hh: num(r.hh), pacote: r.pacote, tipo: r.tipo,
   orig: r.natureza, moeda: r.moeda, preco: num(r.preco), bdi: r.bdi_id ?? null, tribLigados: r.tributos_ligados ?? {},
-  fnac: r.frete_nacional, fint: r.frete_internacional,
+  fnac: r.frete_nacional, fint: r.frete_internacional, origem: r.origem ?? '',
 });
 const MAPA_DB: Record<string, keyof ItemDb> = {
   seq: 'seq', titulo: 'titulo', pqdoc: 'pq_doc', item: 'pq_item', area: 'area', subarea: 'subarea', ativo: 'ativo',
   desc: 'descricao', un: 'unidade', qtd: 'quantidade', prov: 'provisao', hh: 'hh', pacote: 'pacote', tipo: 'tipo',
   orig: 'natureza', moeda: 'moeda', preco: 'preco', bdi: 'bdi_id', posicao: 'posicao', tribLigados: 'tributos_ligados',
-  fnac: 'frete_nacional', fint: 'frete_internacional',
+  fnac: 'frete_nacional', fint: 'frete_internacional', origem: 'origem',
 };
 export function paraBanco(campos: Partial<ItemPos>): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(campos)) if (MAPA_DB[k]) o[MAPA_DB[k]] = v ?? (typeof v === 'string' ? '' : null);
-  for (const k of ['pq_doc', 'pq_item', 'area', 'subarea', 'ativo', 'descricao', 'unidade', 'pacote', 'tipo', 'natureza', 'moeda'])
+  for (const k of ['pq_doc', 'pq_item', 'area', 'subarea', 'ativo', 'descricao', 'unidade', 'pacote', 'tipo', 'natureza', 'moeda', 'origem'])
     if (k in o && (o[k] === null || o[k] === undefined)) o[k] = '';
   if ('tributos_ligados' in o && !o.tributos_ligados) o.tributos_ligados = {};
   for (const k of ['frete_nacional', 'frete_internacional', 'bdi_id']) if (k in o && !o[k]) o[k] = null;

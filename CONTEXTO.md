@@ -54,6 +54,17 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - Emitir revisão guarda a **foto** dos BDIs usados (`revisoes.bdis_congelados`): alterar um BDI depois não muda a
   revisão emitida (Comparar usa a foto). BDIs digitados antes desta mudança viraram "BDI x% (convertido)" (tudo em Lucro).
 
+### Maturidade (página própria no menu)
+- Projeto tem **Classe AACE** (5…1, lista) e **Fase** (texto livre), definidas ao criar ou em "Editar projeto".
+- Cada linha da PX tem **Origem do preço** (grupo "Cotação", antes do Preço unit.): Contrato ou pedido de compra emitido ·
+  Cotação firme de fornecedor · Cotação orçamentária · Composição de preços unitários · Histórico de projetos anteriores ·
+  Benchmark de mercado · Estimativa paramétrica (vazia = "sem origem").
+- **Maturidade = % do Total geral com preço firme** (contrato/pedido + cotação firme), comparado com a meta fixa da classe:
+  Classe 5 meta 0% · 4: 0–20% · 3: 40–60% · 2: 70–90% · 1: 90–100% (maturidade do projeto AACE só informativa).
+  Aderência: dentro, abaixo, muito abaixo (mais de 20 pontos abaixo), acima. Linhas sem total não entram.
+- Na PX: cartão compacto (fase · classe, "% firme", selo) que abre a página Maturidade. A página lista todas as PX por
+  cliente/projeto e mostra o cartão completo (barra com a meta, valor por origem). Excel: coluna e quadros no Resumo.
+
 ### Grade
 - Ordem das linhas = ordem da PQ/importação (nunca reordenar pelo Item PQ; números repetidos são mantidos).
 - **Linhas de título**: só Nº, Item PQ e Descrição; botão "Virar título/Virar item" sem perder valores.

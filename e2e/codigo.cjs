@@ -51,7 +51,7 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await p.getByRole('link', { name: 'Projetos' }).click();
   });
   await passo('marcar item como título e voltar, sem perder valores', async () => {
-    await p.locator('.px-card', { hasText: 'PX-A1-1000-G-PB-0001' }).getByRole('button', { name: 'Editar' }).click();
+    await p.locator('.px-card', { hasText: 'PX-A1-1000-G-PB-0001' }).getByRole('button', { name: 'Editar', exact: true }).click();
     await p.locator('.px-cab', { hasText: 'PX-A1-1000-G-PB-0001' }).filter({ hasText: 'Rev 0' }).waitFor();
     await p.getByRole('button', { name: 'Inserir item' }).click();
     const l = p.locator('table.grid tbody tr').first();
@@ -112,7 +112,7 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     if (cab.some(h => /^(HH|Pacote|BDI)$/.test(h.trim()))) throw new Error('grade com colunas a mais: ' + cab.join('|'));
     if (!cab.some(h => h.trim() === 'Moeda')) throw new Error('grade sem Moeda: ' + cab.join('|'));
     await p.getByRole('button', { name: 'Voltar para Projetos' }).click();
-    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.getByRole('button', { name: 'Editar', exact: true }).first().click();
   });
   await passo('corrigir código e nome pelo lápis do cabeçalho', async () => {
     await p.getByRole('button', { name: 'Corrigir código e nome' }).click();
@@ -143,7 +143,7 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     await aberto.getByLabel('Nome da PX').fill('Nome pelo cartão');
     await aberto.getByRole('button', { name: 'Salvar' }).click();
     await p.locator('.px-card', { hasText: 'Nome pelo cartão' }).waitFor();
-    await p.locator('.px-card', { hasText: 'Nome pelo cartão' }).getByRole('button', { name: 'Editar' }).click();
+    await p.locator('.px-card', { hasText: 'Nome pelo cartão' }).getByRole('button', { name: 'Editar', exact: true }).click();
   });
   await passo('editar o código em Dados da PX', async () => {
     await p.getByRole('button', { name: 'Dados da PX' }).click();

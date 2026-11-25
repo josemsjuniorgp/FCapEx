@@ -30,7 +30,7 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
 
   await passo('menu BDI: página vazia e novo BDI com a composição (BDI final calculado)', async () => {
     const menu = await p.locator('nav.side .nav-item').allInnerTexts();
-    if (menu.map(x => x.trim()).join('|') !== 'Projetos|Biblioteca|BDI|Parâmetros|Equipe') throw new Error('menu: ' + menu.join('|'));
+    if (menu.map(x => x.trim()).join('|') !== 'Projetos|Biblioteca|BDI|Maturidade|Parâmetros|Equipe') throw new Error('menu: ' + menu.join('|'));
     await p.getByRole('link', { name: 'BDI', exact: true }).click();
     await p.getByText('Nenhum BDI cadastrado.').waitFor();
     await p.getByRole('button', { name: 'Novo BDI' }).click();
@@ -128,7 +128,7 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
     await f.getByRole('button', { name: 'Salvar' }).click();
     await p.getByText('BDI Fornecimento salvo.').waitFor();
     await p.getByRole('link', { name: 'Projetos', exact: true }).click();
-    await p.getByRole('button', { name: 'Editar' }).first().click();
+    await p.getByRole('button', { name: 'Editar', exact: true }).first().click();
     linha = p.locator('table.grid tbody tr').first(); await linha.getByText('OK', { exact: true }).waitFor(); await lerCab();
     const v = (await td('BDI (R$)').innerText()).trim();
     if (v !== nf(1000 * forn2)) throw new Error(`revisão em edição deveria usar o BDI novo: ${v} (esperado ${nf(1000 * forn2)})`);
