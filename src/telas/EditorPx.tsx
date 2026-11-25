@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSessao } from '../app/Sessao';
 import { brl, brlCurto, Confirmar, dataHora, nf, plural, useAcao, useAviso, usdCurto } from '../app/ui';
 import {
-  aplicarBdiEmLote, atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
+  atualizarItem, atualizarPx, emitirRevisao, excluirItem, excluirPx, inserirItens, lerPx, listarItens,
   listarClientes, listarProjetos, listarRevisoes, type Cliente, type ItemPos, type Projeto, type Px, type Revisao,
 } from '../dados/api';
 import { bdiFinal, calcular, detalheCheck, gruposPorTitulo, niveisTitulos, totais } from '../dominio/calculo';
@@ -42,7 +42,6 @@ export function EditorPx() {
   const [importar, setImportar] = useState(false);
   const [editandoCab, setEditandoCab] = useState(false);
   const [exportando, setExportando] = useState(false);
-  const [lote, setLote] = useState<string | null>(null); // painel "Aplicar BDI": id escolhido ('' = sem BDI)
   const [perguntar, setPerguntar] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -88,7 +87,7 @@ export function EditorPx() {
   const passa = useMemo(() => aplicarFiltros(itens, filtros, colsModelo, ctxFiltro), [itens, filtros, colsModelo, ctxFiltro]);
   const visiveis = passa ? itens.filter(i => passa.has(i.id)) : itens;
   const itensVis = visiveis.filter(i => !i.titulo);
-  const totalVis = itensVis.reduce((s2, i) => s2 + (res.get(i.id)?.ger || 0), 0);
+  const tf = useMemo(() => (passa && parametros ? totais(itensVis, parametros, modelo) : null), [passa, itensVis.length, parametros, modelo, res]); // eslint-disable-line react-hooks/exhaustive-deps
   /** Valores de uma coluna para a lista do filtro, considerando os filtros das outras colunas. */
   const valoresPara = (k: string) => () => {
     const outros = { ...filtros }; delete outros[k];
@@ -137,20 +136,6 @@ export function EditorPx() {
     if (!px || !t) return;
     setPerguntar(null);
     if (await acao(() => emitirRevisao(px.id, t.ger), `Rev ${revAtual?.numero} emitida. A edição continua na Rev ${(revAtual?.numero ?? 0) + 1}.`)) carregar();
-  }
-
-  /** Aplica o BDI escolhido a todas as linhas visíveis (respeita grupo, busca e filtro do Check). */
-  async function aplicarLote() {
-    if (lote === null) return;
-    const alvoIds = visiveis.filter(i => !i.titulo).map(i => i.id);
-    const bdi = lote || null;
-    const nome = parametros?.bdis.find(b => b.id === bdi)?.nome ?? 'sem BDI (-)';
-    if (await acao(() => aplicarBdiEmLote(alvoIds, bdi), `${nome} aplicado a ${plural(alvoIds.length, 'linha', 'linhas')}.`)) {
-      const ids = new Set(alvoIds);
-      setItens(l => l.map(i => (ids.has(i.id) ? { ...i, bdi } : i)));
-      setLote(null);
-      if (px) atualizarPx(px.id, {}).catch(() => {});
-    }
   }
 
   /** Insere ou exclui uma coluna desta PX (para todos). Os valores dos itens ficam guardados. */
@@ -278,36 +263,41 @@ export function EditorPx() {
           )}
         </div>
       </div>
+      {tf && (
+        <div className="kpis kpis-filtro" role="region" aria-label="Indicadores das linhas filtradas">
+          <span className="kpis-filtro-rot">Filtrado</span>
+          {([
+            ['Total Geral Bruto (R$)', brlCurto(tf.ger), tf.ger, t.ger, 'brl'],
+            ['Total Geral Líquido (R$)', brlCurto(tf.liq), tf.liq, t.liq, 'brl'],
+            ['Total Geral Bruto (US$)', usd ? usdCurto(tf.ger / usd) : '—', tf.ger, t.ger, 'usd'],
+            ['Total Geral Líquido (US$)', usd ? usdCurto(tf.liq / usd) : '—', tf.liq, t.liq, 'usd'],
+          ] as const).map(([rot, txt, v, tot]) => (
+            <div key={rot} className="kpi moldura filtro"><small>{rot}</small><b>{txt}</b>
+              <span className="kpi-pct">{tot ? `${nf((v / tot) * 100, 1)}% do projeto` : '—'}</span></div>
+          ))}
+          <div className="kpi moldura filtro neutro"><small>Itens</small><b>{itensVis.length}</b>
+            <span className="kpi-pct">de {itens.length - t.tit}</span></div>
+          <div className="row kpis-filtro-chk">
+            <span className="pill p-ok"><i />{tf.ok} ok</span>
+            <span className="pill p-warn"><i />{tf.inc} incompletas</span>
+            <span className="pill p-err"><i />{tf.err} com erro</span>
+          </div>
+        </div>
+      )}
       <div className="tools">
         {editavel && <button className="btn" onClick={inserirItem}>Inserir item</button>}
         {editavel && <button className="btn" onClick={() => setImportar(true)}>Importar PQ</button>}
-        {editavel && modelo.has('bdi') && <button className="btn" aria-pressed={lote !== null} onClick={() => setLote(lote === null ? '' : null)}
-          title="Escolher um BDI e aplicar a várias linhas de uma vez">Aplicar BDI</button>}
         <span className="spacer" />
-        <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Colunas</button>
-        <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
-        <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar</button>
+        <button className="btn" aria-pressed={painel === 'colunas'} onClick={() => setPainel(painel === 'colunas' ? null : 'colunas')}>Gerenciar colunas</button>
+        <button className="btn" onClick={() => ir(`/px/${px.id}/comparar`)}>Comparar PXs</button>
         <button className="btn" onClick={exportar} disabled={exportando} title="Baixar a PX em Excel (.xlsx) com resumo e parâmetros">
           {exportando ? 'Gerando…' : 'Exportar Excel'}</button>
         {editavel && <button className="btn primary" onClick={() => setPerguntar('emitir')}>Emitir nova revisão</button>}
+        <button className="btn" aria-pressed={painel === 'dados'} onClick={() => setPainel(painel === 'dados' ? null : 'dados')}>Dados da PX</button>
       </div>
-      {lote !== null && editavel && (
-        <div className="bdi-lote" role="group" aria-label="Aplicar BDI em lote">
-          <b>Aplicar BDI</b>
-          <select value={lote} aria-label="BDI a aplicar" onChange={e => setLote(e.target.value)}>
-            <option value="">- (sem BDI)</option>
-            {parametros.bdis.map(b => <option key={b.id} value={b.id}>{rotuloBdi(b)}</option>)}
-          </select>
-          <span>às <b>{plural(itensVis.length, 'linha visível', 'linhas visíveis')}</b></span>
-          <span className="note">Use os filtros das colunas (funil no cabeçalho) para escolher as linhas.</span>
-          <span className="spacer" />
-          <button className="btn" onClick={() => setLote(null)}>Cancelar</button>
-          <button className="btn primary" disabled={!itensVis.length} onClick={aplicarLote}>Aplicar</button>
-        </div>
-      )}
       {passa && (
         <div className="filtros-ativos" role="region" aria-label="Filtros ativos">
-          <span className="note"><b>Filtros ativos</b> · mostrando {itensVis.length} de {plural(itens.length - t.tit, 'item', 'itens')} ({brl(totalVis)})</span>
+          <span className="note"><b>Filtros ativos</b></span>
           {Object.entries(filtros).map(([k, f]) => {
             const c = todas.find(x => x.k === k);
             return (
@@ -392,7 +382,7 @@ export function EditorPx() {
         <aside className={'side-panel' + (painel ? ' on' : '')}>
           {painel === 'colunas' && (
             <>
-              <div className="panel-head"><h2>Colunas</h2><button className="btn small" onClick={() => setPainel(null)}>Fechar</button></div>
+              <div className="panel-head"><h2>Gerenciar colunas</h2><button className="btn small" onClick={() => setPainel(null)}>Fechar</button></div>
               {podeEditar && (
                 <>
                   <h3>Colunas desta PX</h3>

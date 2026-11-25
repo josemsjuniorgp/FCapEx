@@ -240,11 +240,6 @@ export async function inserirItens(emp: string, revisao: string, itens: ItemPos[
 }
 export const atualizarItem = async (id: string, campos: Partial<ItemPos>) =>
   ok(await supabase.from('itens').update(paraBanco(campos)).eq('id', id));
-/** Aplica o mesmo BDI (ou nenhum) a várias linhas de uma vez. */
-export async function aplicarBdiEmLote(ids: string[], bdi: string | null) {
-  for (let i = 0; i < ids.length; i += 200)
-    ok(await supabase.from('itens').update({ bdi_id: bdi }).in('id', ids.slice(i, i + 200)));
-}
 export const excluirItem = async (id: string) => ok(await supabase.from('itens').delete().eq('id', id));
 export const excluirItensDaRevisao = async (revisao: string) => ok(await supabase.from('itens').delete().eq('revisao_id', revisao));
 

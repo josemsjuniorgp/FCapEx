@@ -387,7 +387,6 @@ table.grid td.in-c select{text-overflow:ellipsis}
 .bdi-erro{color:var(--err)}
 .bdi-rodape{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
 .bdi-vazio{padding:28px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-.bdi-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft, #eef7f8)}
 @media (min-width:1500px){.tools{flex-wrap:nowrap}.tools > *{flex-shrink:0}.tools input[type=search].in{flex-shrink:1}}
 
 /* ---------- cabeçalho da grade: grupos em verde-escuro, colunas em verde intermediário ---------- */
@@ -440,3 +439,14 @@ table.grid thead tr.h th.sticky.c1{padding-right:30px}
 .filtro-chip button{border:0;background:transparent;color:var(--muted);cursor:pointer;width:20px;height:20px;border-radius:50%;padding:0}
 .filtro-chip button:hover{background:rgba(0,0,0,.08);color:var(--ink)}
 table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ---------- indicadores das linhas filtradas (verde-petróleo) ---------- */
+.kpis.kpis-filtro{padding-top:0;align-items:stretch}
+.kpis-filtro-rot{align-self:center;writing-mode:vertical-rl;transform:rotate(180deg);font:700 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--cab-g);background:var(--accent-soft);border-radius:6px;padding:8px 4px}
+.kpi.moldura.filtro{background:var(--cab-g);border-color:var(--cab-g);color:#fff}
+.kpi.moldura.filtro::before{background:rgba(255,255,255,.35)}
+.kpi.moldura.filtro small{color:rgba(255,255,255,.82)}
+.kpi.moldura.filtro b{color:#fff}
+.kpi.moldura.filtro .kpi-pct{font-size:11px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;margin-top:1px}
+.kpis-filtro-chk{align-self:center}

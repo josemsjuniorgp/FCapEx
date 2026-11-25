@@ -101,17 +101,12 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
     if (!(await td('BDI').locator('select option:checked').innerText()).startsWith('BDI Obras Civis')) throw new Error('BDI não ficou salvo');
   });
 
-  await passo('aplicar BDI em lote às linhas visíveis', async () => {
+  await passo('sem "Aplicar BDI": BDI escolhido linha a linha na lista', async () => {
+    if (await p.getByRole('button', { name: 'Aplicar BDI' }).count()) throw new Error('botão Aplicar BDI ainda existe');
     await p.getByRole('button', { name: 'Inserir item' }).click();
     const l2 = p.locator('table.grid tbody tr').nth(1); await l2.waitFor();
     await preencher(l2, 'Fornecimento de cabos', '1', '500');
-    await p.getByRole('button', { name: 'Aplicar BDI' }).click();
-    const painel = p.getByRole('group', { name: 'Aplicar BDI em lote' });
-    await painel.getByText('2 linhas visíveis').waitFor();
-    await painel.getByLabel('BDI a aplicar').selectOption({ label: `BDI Fornecimento (${nf(forn * 100)}%)` });
-    await p.screenshot({ path: `${S}/shots/32-bdi-lote.png` });
-    await painel.getByRole('button', { name: 'Aplicar' }).click();
-    await p.getByText('BDI Fornecimento aplicado a 2 linhas.').waitFor();
+    for (const l of [linha, l2]) { await td('BDI', l).locator('select').selectOption({ label: `BDI Fornecimento (${nf(forn * 100)}%)` }); await p.waitForTimeout(400); }
     for (const [l, liq] of [[linha, 1000], [l2, 500]]) {
       const v = (await td('BDI (R$)', l).innerText()).trim();
       if (v !== nf(liq * forn)) throw new Error(`BDI (R$) ${v} (esperado ${nf(liq * forn)})`);
@@ -137,7 +132,8 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
     linha = p.locator('table.grid tbody tr').first(); await linha.getByText('OK', { exact: true }).waitFor(); await lerCab();
     const v = (await td('BDI (R$)').innerText()).trim();
     if (v !== nf(1000 * forn2)) throw new Error(`revisão em edição deveria usar o BDI novo: ${v} (esperado ${nf(1000 * forn2)})`);
-    await p.getByRole('button', { name: 'Comparar' }).click();
+    await p.getByRole('button', { name: 'Comparar PXs' }).click();
+    await p.locator('.kpi', { hasText: 'Total Rev 0' }).locator('b').filter({ hasText: nf(totalRev0) }).waitFor({ timeout: 10000 }).catch(() => {});
     const k0 = (await p.locator('.kpi', { hasText: 'Total Rev 0' }).locator('b').innerText()).replace(/\s/g, ' ');
     const k1 = (await p.locator('.kpi', { hasText: 'Total Rev 1' }).locator('b').innerText()).replace(/\s/g, ' ');
     if (k0 !== 'R$ ' + nf(totalRev0)) throw new Error(`Rev 0 mudou: ${k0} (esperado R$ ${nf(totalRev0)})`);

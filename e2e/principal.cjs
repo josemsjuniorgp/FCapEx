@@ -125,6 +125,12 @@ const S = process.argv[2];
     await j2.getByRole('button', { name: 'OK', exact: true }).click();
     if (await linhas() !== 2) throw new Error('Tipo = Fornecimento mostrou ' + await linhas() + ' (esperado título 1.2 + 1 item)');
     if (!(await p.getByRole('button', { name: 'Filtrar Tipo de Trabalho' }).getAttribute('class')).includes('on')) throw new Error('funil não ficou marcado');
+    const kf = p.getByRole('region', { name: 'Indicadores das linhas filtradas' });
+    const itensF = (await kf.locator('.kpi', { hasText: 'Itens' }).innerText()).replace(/\s+/g, ' ');
+    if (!itensF.includes('Itens 1 de 4')) throw new Error('indicadores filtrados: ' + itensF);
+    if (!(await kf.locator('.kpi', { hasText: 'Total Geral Bruto (R$)' }).innerText()).includes('% do projeto')) throw new Error('sem % do projeto');
+    if (/mostrando/.test(await p.locator('.filtros-ativos').innerText())) throw new Error('faixa de filtros ainda tem números');
+    if (!(await p.locator('.tools').innerText()).replace(/\s+/g, ' ').endsWith('Emitir nova revisão Dados da PX')) throw new Error('ordem dos botões: ' + await p.locator('.tools').innerText());
     await p.screenshot({ path: `${S}/shots/17b-filtro-ativo.png` });
     // guardado ao recarregar
     await p.reload(); await p.locator('.filtro-chip', { hasText: '(F) Fornecimento' }).waitFor();
@@ -138,10 +144,11 @@ const S = process.argv[2];
     await p.locator('.filtros-ativos').getByRole('button', { name: 'Limpar todos os filtros' }).click();
     if (await linhas() !== 6) throw new Error('limpar todos mostrou ' + await linhas());
     // pílula do topo = atalho do filtro da coluna Check
-    await p.locator('.kpis .pill.p-warn').click();
+    await p.locator('.kpis button.pill.p-warn').click();
     await p.locator('.filtro-chip', { hasText: 'Check' }).filter({ hasText: 'Incompleto' }).waitFor();
-    await p.locator('.kpis .pill.p-warn').click();
+    await p.locator('.kpis button.pill.p-warn').click();
     if (await p.locator('.filtros-ativos').count()) throw new Error('atalho do Check não desligou');
+    if (await p.getByRole('region', { name: 'Indicadores das linhas filtradas' }).count()) throw new Error('linha filtrada não sumiu');
   });
   await passo('grade ocupa a tela: página não cresce e barra horizontal fica no rodapé', async () => {
     const m = await p.evaluate(() => { const g = document.querySelector('.gridwrap'); const r = g.getBoundingClientRect();
@@ -163,7 +170,7 @@ const S = process.argv[2];
     const preco = p.locator('table.grid tbody tr').nth(1).locator('td.in-c .cur input');
     await preco.fill('1500'); await preco.press('Enter');
     await p.waitForTimeout(600);
-    await p.getByRole('button', { name: 'Comparar' }).click();
+    await p.getByRole('button', { name: 'Comparar PXs' }).click();
     await p.getByText('Comparar revisões · PX-0001').waitFor();
     await p.getByText(/preço 1000 → 1500/).waitFor();
     await p.screenshot({ path: `${S}/shots/5-comparar.png` });
