@@ -61,6 +61,26 @@ algo que o site atual usa, aplicar em duas fases (primeiro acrescenta, publica o
 - Emitir revisão guarda a **foto** dos BDIs usados (`revisoes.bdis_congelados`): alterar um BDI depois não muda a
   revisão emitida (Comparar usa a foto). BDIs digitados antes desta mudança viraram "BDI x% (convertido)" (tudo em Lucro).
 
+### Viabilidade (menu "Viabilidade") — do orçamento à decisão de investimento
+- Cada **projeto** pode ter vários **Estudos de Viabilidade** (alternativas). Tipos: **Com receita** (vende produto/serviço)
+  ou **Redução de custo** (economia: custos de hoje evitados × custos novos no OpEx).
+- Abas: Premissas · CapEx · OpEx · Receitas/Economias · Resultados · Risco e cenários · Relatório.
+- **Premissas:** ano 1 (calendário), anos de obra e de operação, taxa de desconto real, IR+CSLL (padrão 34%),
+  depreciação linear (anos), valor residual (% CapEx), rampa de partida (% da capacidade nos 1ºs anos de operação).
+  **Valores reais** (moeda de hoje); reajuste real por linha.
+- **CapEx:** Total geral dos Mapas de Preços escolhidos (revisão em edição) + CapEx adicional; desembolso % por ano de
+  obra; reinvestimentos (ano, valor) que depreciam a partir do ano seguinte.
+- **OpEx / Receitas / Economias:** grades linha a linha (títulos em areia): Fixo/Variável (variável segue a rampa), unid,
+  quantidade/ano, preço, moeda (câmbio), ano inicial/final, reajuste real a.a., dedução s/ venda (receitas), origem do preço.
+- **Cálculo** (`src/dominio/viabilidade.ts`): caixa do ano = receita líquida + economia − OpEx − IR/CSLL − CapEx −
+  reinvestimentos (+ residual no último ano); IR = alíquota × máx(0, EBITDA − depreciação). VPL (fim de ano), TIR
+  (bisseção; sem troca de sinal = sem TIR), payback simples e descontado (só se houve investimento a recuperar),
+  custo do ciclo de vida = CapEx + reinvestimentos + Σ OpEx. Tornado: preço, volume, CapEx, OpEx fixo/variável ±20%,
+  taxa ±2 p.p. Cenários pessimista/otimista com ajustes editáveis (preço, volume, CapEx, OpEx). Comparar alternativas
+  do mesmo projeto.
+- **Excel do estudo:** Resumo · Premissas · CapEx · OpEx · Receitas/Economias · Fluxo de caixa · Sensibilidade.
+- Próximo: relatório em PDF.
+
 ### Maturidade (página própria no menu)
 - Projeto tem **Classe AACE** (5…1, lista) e **Fase** (texto livre), definidas ao criar ou em "Editar projeto".
 - Cada linha da PX tem **Origem do preço** (grupo "Cotação", antes do Preço unit.): Contrato ou pedido de compra emitido ·

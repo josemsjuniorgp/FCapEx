@@ -4,6 +4,8 @@ import { iniciais, ProvedorAviso } from './app/ui';
 import { NOME_PAPEL } from './dados/api';
 import { PaginaBdi } from './telas/Bdi';
 import { PaginaMaturidade } from './telas/Maturidade';
+import { Viabilidade } from './telas/Viabilidade';
+import { Estudo } from './telas/Estudo';
 import { Biblioteca } from './telas/Biblioteca';
 import { Comparar } from './telas/Comparar';
 import { DefinirSenha } from './telas/DefinirSenha';
@@ -17,6 +19,7 @@ import { Projetos } from './telas/Projetos';
 const I = (d: string) => <svg viewBox="0 0 24 24"><path d={d} /></svg>;
 const MENU: [string, string, string][] = [
   ['/', 'Projetos', 'M3 7h18M3 12h18M3 17h12'],
+  ['/viabilidade', 'Viabilidade', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
   ['/biblioteca', 'Biblioteca', 'M4 4h6l2 2h8v14H4z'],
   ['/bdi', 'BDI', 'M5 19L19 5M9 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM19 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z'],
   ['/maturidade', 'Maturidade', 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
@@ -37,7 +40,7 @@ function Shell() {
         <div className="brand2"><i>FC</i><div><b>FCapEx</b><small>Mapas de Preços CapEx</small></div></div>
         <div className="nav-label">Menu</div>
         {MENU.map(([to, nome, d]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive || (to === '/' && local.pathname.startsWith('/px/')) ? ' ativo' : '')}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => 'nav-item' + (isActive || (to === '/' && local.pathname.startsWith('/px/')) || (to === '/viabilidade' && local.pathname.startsWith('/estudo/')) ? ' ativo' : '')}>
             {I(d)}{nome}
           </NavLink>
         ))}
@@ -56,6 +59,7 @@ function Shell() {
       <main className="main">
         <Routes>
           <Route path="/px/:id" element={<section className="view on" id="v-px"><EditorPx /></section>} />
+          <Route path="/estudo/:id" element={<section className="view on" id="v-estudo"><Estudo /></section>} />
           <Route path="*" element={
             <section className="view on">
               <Routes>
@@ -63,6 +67,7 @@ function Shell() {
                 <Route path="/px/:id/comparar" element={<Comparar />} />
                 <Route path="/biblioteca" element={<Biblioteca />} />
                 <Route path="/bdi" element={<PaginaBdi />} />
+                <Route path="/viabilidade" element={<Viabilidade />} />
                 <Route path="/maturidade" element={<PaginaMaturidade />} />
                 <Route path="/parametros" element={<Parametros />} />
                 <Route path="/equipe" element={<Equipe />} />

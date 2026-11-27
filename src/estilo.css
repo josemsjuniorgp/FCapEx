@@ -519,3 +519,57 @@ table.grid tr.title td.subtot{font-weight:700;font-variant-numeric:tabular-nums}
 
 /* ---------- colunas centralizadas (Nº, Item PQ, Área, Subárea, Ativo, Unid, Pacote) ---------- */
 table.grid td.centro,table.grid td.centro textarea,table.grid td.centro input{text-align:center}
+
+/* ---------- Viabilidade (estudos) ---------- */
+#v-estudo.on{display:flex;flex-direction:column;padding:0;overflow:auto}
+.estudo-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.estudo-kpis .estudo-kpi{min-width:170px}
+.estudo-kpi .kpi-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.estudo-kpi.bom .kpi-sub{color:var(--ok)} .estudo-kpi.ruim .kpi-sub{color:var(--warn)}
+.estudo-kpi.ruim::before{background:var(--warn)}
+.estudo-abas{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.estudo-abas button{border:0;background:none;padding:11px 16px;color:var(--muted);font-weight:500;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.estudo-abas button.on{color:var(--cab-g);border-bottom-color:var(--accent);font-weight:600}
+.estudo-corpo{padding:16px 20px 28px}
+.estudo-bloco{padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.estudo-bloco h2{margin:0}
+.estudo-premissas{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px;align-items:start}
+.estudo-campos{display:flex;gap:12px;flex-wrap:wrap}
+.estudo-fld{min-width:150px}
+.estudo-fld .in.num{width:120px}
+.estudo-aviso{color:var(--warn);font-weight:600}
+.estudo-total-capex{font-size:15px;margin-top:4px}
+.estudo-resultados{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.estudo-largo{grid-column:1/-1}
+.estudo-fluxo td,.estudo-fluxo th{white-space:nowrap}
+.estudo-fluxo td.neg b,.estudo-lista td.neg b{color:var(--err)}
+.estudo-fluxo tr.sel td{background:var(--accent-soft)}
+.estudo-cenarios{display:flex;gap:8px}
+.estudo-cenario{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 10px;text-align:center;display:flex;flex-direction:column}
+.estudo-cenario small{color:var(--muted)} .estudo-cenario b{font-size:17px} .estudo-cenario span{font-size:11.5px;color:var(--muted)}
+.estudo-cenario.base{border-color:var(--accent);background:var(--accent-soft)}
+.estudo-grade .estudo-wrap{max-height:none;overflow:auto}
+.estudo-tab td.in-c input{width:100%;height:33px;border:0;background:transparent;padding:0 8px}
+.estudo-tab td.in-c input:focus{background:var(--accent-soft);outline:2px solid var(--accent)}
+.estudo-tab td.in-c select{min-width:110px}
+.estudo-tab th{white-space:normal}
+.estudo-tab tr.estudo-total td{background:var(--accent-soft);color:var(--cab-g);font-weight:700;border-top:2px solid var(--accent)}
+.estudo-tipo{border:1px solid var(--line);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.estudo-tipo label{align-items:flex-start}
+.grafico{width:100%;height:auto;font:10.5px var(--sans, Inter, Arial)}
+.grafico .eixo{fill:var(--muted);font-size:10.5px}
+.grafico .nome-sens{fill:var(--cab-h-ink);font-size:12px}
+.grafico .barra-pos{fill:#1f8a92} .grafico .barra-neg{fill:#c0563f}
+.grafico .linha-acum{stroke:var(--cab-g);stroke-width:2.2}
+.grafico .ponto-acum{stroke:var(--cab-g);stroke-width:2}
+.grafico .rotulo-acum{fill:var(--cab-g);font-weight:600;font-size:11px}
+@media (max-width:1100px){.estudo-resultados{grid-template-columns:1fr}}
+.estudo-tipo-chip{background:var(--accent-soft);border-color:#b9dcdf;color:var(--cab-g);font-weight:600}
+.estudo-tab td.in-c select{min-width:0;width:100%}
+.estudo-tab td{overflow:hidden;text-overflow:ellipsis}
+.estudo-tab td.calc .pill{white-space:nowrap;font-size:11px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .grafico .linha-acum,:root:not([data-theme="light"]) .grafico .ponto-acum{stroke:var(--accent)}:root:not([data-theme="light"]) .grafico .rotulo-acum{fill:var(--accent)}}
+:root[data-theme="dark"] .grafico .linha-acum,:root[data-theme="dark"] .grafico .ponto-acum{stroke:var(--accent)}
+:root[data-theme="dark"] .grafico .rotulo-acum{fill:var(--accent)}
+table.grid.estudo-tab thead tr.h th{padding:6px 6px;white-space:normal;text-overflow:clip;line-height:1.2;vertical-align:middle}
+table.grid.estudo-tab td.in-c input{padding:0 6px}

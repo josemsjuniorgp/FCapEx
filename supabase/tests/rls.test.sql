@@ -288,3 +288,25 @@ select public.emitir_revisao((select v from ids where k='pxt'), 0);
 select pg_temp.confere((select origem from public.itens i join public.revisoes r on r.id = i.revisao_id
   where r.px_id = (select v from ids where k='pxt') and r.emitida_em is null and i.descricao = 'Com frete') = 'firme', 'revisão nova copia a origem do preço');
 reset role;
+
+-- 21) Viabilidade: orçamentista cria estudo e linhas; leitura só consulta; isolamento entre empresas
+select pg_temp.como('00000000-0000-0000-0000-00000000000d');
+with e as (insert into public.estudos (empresa_id, projeto_id, nome, tipo) values ((select v from ids where k='A'), (select v from ids where k='projA'), 'Alternativa A', 'receita') returning id)
+insert into ids select 'estA', id from e;
+insert into public.estudo_linhas (empresa_id, estudo_id, secao, descricao, quantidade, preco) values
+  ((select v from ids where k='A'), (select v from ids where k='estA'), 'opex', 'Energia', 1, 1000);
+select pg_temp.deve_falhar(format($q$insert into public.estudo_linhas (empresa_id, estudo_id, secao, descricao) values (%L, %L, 'capex', 'x')$q$,
+  (select v from ids where k='A'), (select v from ids where k='estA')), 'seção inválida na linha do estudo');
+reset role;
+select pg_temp.como('00000000-0000-0000-0000-00000000000c');
+select pg_temp.confere((select count(*) from public.estudos) = 1, 'leitura vê o estudo');
+select pg_temp.deve_falhar(format($q$insert into public.estudos (empresa_id, projeto_id, nome) values (%L, %L, 'x')$q$,
+  (select v from ids where k='A'), (select v from ids where k='projA')), 'leitura criar estudo');
+update public.estudos set nome = 'hack' where id = (select v from ids where k='estA');
+reset role;
+select pg_temp.confere((select nome from public.estudos where id = (select v from ids where k='estA')) = 'Alternativa A', 'leitura não altera estudo');
+select pg_temp.como('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.confere((select count(*) from public.estudos) = 0 and (select count(*) from public.estudo_linhas) = 0, 'estranho não vê estudos');
+reset role;
+select pg_temp.deve_falhar(format($q$insert into public.estudos (empresa_id, projeto_id, nome) values (%L, %L, 'x')$q$,
+  (select v from ids where k='C'), (select v from ids where k='projA')), 'estudo de outra empresa no projeto da A');

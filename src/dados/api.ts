@@ -1,6 +1,7 @@
 /** Acesso ao banco. Converte entre as colunas do banco (português) e o Item do domínio. */
 import { supabase } from './supabase';
 import type { Bdi, Frete, Item, Parametros, Tributo } from '../dominio/tipos';
+import type { CapexEstudo, LinhaEstudo, Premissas, Secao, TipoEstudo } from '../dominio/viabilidade';
 
 export type Papel = 'admin' | 'orcamentista' | 'revisor' | 'leitura';
 export const NOME_PAPEL: Record<Papel, string> = {
@@ -286,3 +287,50 @@ export async function baixarArquivo(a: Arquivo): Promise<ArrayBuffer> {
   if (r.error) throw new Error(traduzErro(r.error.message));
   return r.data.arrayBuffer();
 }
+
+// ------------------------------------------------------------------ viabilidade (estudos)
+export interface Estudo {
+  id: string; projeto_id: string; nome: string; tipo: TipoEstudo;
+  premissas: Partial<Premissas>; capex: Partial<CapexEstudo>; observacoes: string; atualizado_em: string;
+}
+const CAMPOS_ESTUDO = 'id, projeto_id, nome, tipo, premissas, capex, observacoes, atualizado_em';
+export const listarEstudos = async (emp: string) =>
+  ok(await supabase.from('estudos').select(CAMPOS_ESTUDO).eq('empresa_id', emp).order('criado_em')) as Estudo[];
+export const lerEstudo = async (id: string) => ok(await supabase.from('estudos').select(CAMPOS_ESTUDO).eq('id', id).single()) as Estudo;
+export const criarEstudo = async (emp: string, projeto_id: string, nome: string, tipo: TipoEstudo, premissas: Premissas, capex: CapexEstudo) =>
+  (ok(await supabase.from('estudos').insert({ empresa_id: emp, projeto_id, nome: nome.trim(), tipo, premissas, capex }).select('id').single()) as { id: string }).id;
+export const atualizarEstudo = async (id: string, campos: Partial<Pick<Estudo, 'nome' | 'tipo' | 'premissas' | 'capex' | 'observacoes'>>) =>
+  ok(await supabase.from('estudos').update({ ...campos, atualizado_em: new Date().toISOString() }).eq('id', id));
+export const excluirEstudo = async (id: string) => ok(await supabase.from('estudos').delete().eq('id', id));
+
+interface LinhaDb {
+  id: string; secao: Secao; posicao: number; titulo: boolean; item: string; descricao: string; comportamento: 'fixo' | 'variavel';
+  unidade: string; quantidade: number | null; preco: number | null; moeda: string; ano_inicio: number | null; ano_fim: number | null;
+  reajuste: number; deducao: number; origem: string;
+}
+const linhaDoBanco = (r: LinhaDb): LinhaEstudo => ({
+  id: r.id, secao: r.secao, posicao: Number(r.posicao), titulo: r.titulo, item: r.item, descricao: r.descricao,
+  comportamento: r.comportamento, unidade: r.unidade, quantidade: num(r.quantidade), preco: num(r.preco), moeda: r.moeda,
+  anoInicio: r.ano_inicio, anoFim: r.ano_fim, reajuste: Number(r.reajuste), deducao: Number(r.deducao), origem: r.origem,
+});
+const MAPA_LINHA: Record<string, string> = {
+  secao: 'secao', posicao: 'posicao', titulo: 'titulo', item: 'item', descricao: 'descricao', comportamento: 'comportamento',
+  unidade: 'unidade', quantidade: 'quantidade', preco: 'preco', moeda: 'moeda', anoInicio: 'ano_inicio', anoFim: 'ano_fim',
+  reajuste: 'reajuste', deducao: 'deducao', origem: 'origem',
+};
+const linhaParaBanco = (c: Partial<LinhaEstudo>) => {
+  const o: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(c)) if (MAPA_LINHA[k]) o[MAPA_LINHA[k]] = v;
+  for (const k of ['item', 'descricao', 'unidade', 'origem']) if (k in o && (o[k] === null || o[k] === undefined)) o[k] = '';
+  for (const k of ['reajuste', 'deducao']) if (k in o && (o[k] === null || o[k] === undefined)) o[k] = 0;
+  return o;
+};
+export const listarLinhasEstudo = async (estudo: string) =>
+  (ok(await supabase.from('estudo_linhas').select('*').eq('estudo_id', estudo).order('posicao')) as LinhaDb[]).map(linhaDoBanco);
+export async function inserirLinhasEstudo(emp: string, estudo: string, linhas: LinhaEstudo[]) {
+  for (let i = 0; i < linhas.length; i += 500)
+    ok(await supabase.from('estudo_linhas').insert(linhas.slice(i, i + 500).map(l => ({ id: l.id, empresa_id: emp, estudo_id: estudo, ...linhaParaBanco(l) }))));
+}
+export const atualizarLinhaEstudo = async (id: string, c: Partial<LinhaEstudo>) =>
+  ok(await supabase.from('estudo_linhas').update(linhaParaBanco(c)).eq('id', id));
+export const excluirLinhasEstudo = async (ids: string[]) => ok(await supabase.from('estudo_linhas').delete().in('id', ids));

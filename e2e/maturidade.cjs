@@ -62,7 +62,7 @@ const S = process.argv[2], SITE = 'http://127.0.0.1:5173';
     if (!(await det.locator('.mat-big').innerText()).startsWith('60,0%')) throw new Error(await det.locator('.mat-big').innerText());
     for (const t of ['Cotação firme 60%', 'Orçamentária 40%', 'Dentro da meta']) if (!(await det.innerText()).replace(/\s+/g, ' ').includes(t)) throw new Error('falta ' + t);
     const menu = (await p.locator('nav.side .nav-item').allInnerTexts()).map(x => x.trim()).join('|');
-    if (menu !== 'Projetos|Biblioteca|BDI|Maturidade|Parâmetros|Equipe') throw new Error('menu: ' + menu);
+    if (menu !== 'Projetos|Viabilidade|Biblioteca|BDI|Maturidade|Parâmetros|Equipe') throw new Error('menu: ' + menu);
     await p.getByRole('button', { name: 'Maturidade de PX-MAT-01' }).waitFor();
     await p.screenshot({ path: `${S}/shots/41-maturidade-pagina.png` });
   });

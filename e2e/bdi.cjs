@@ -30,7 +30,7 @@ const final = (ac, s, g, r, extras, df, l) => (1 + ac + s + g + r + extras) * (1
 
   await passo('menu BDI: página vazia e novo BDI com a composição (BDI final calculado)', async () => {
     const menu = await p.locator('nav.side .nav-item').allInnerTexts();
-    if (menu.map(x => x.trim()).join('|') !== 'Projetos|Biblioteca|BDI|Maturidade|Parâmetros|Equipe') throw new Error('menu: ' + menu.join('|'));
+    if (menu.map(x => x.trim()).join('|') !== 'Projetos|Viabilidade|Biblioteca|BDI|Maturidade|Parâmetros|Equipe') throw new Error('menu: ' + menu.join('|'));
     await p.getByRole('link', { name: 'BDI', exact: true }).click();
     await p.getByText('Nenhum BDI cadastrado.').waitFor();
     await p.getByRole('button', { name: 'Novo BDI' }).click();
