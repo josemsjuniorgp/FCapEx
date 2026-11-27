@@ -151,6 +151,16 @@ npm run test:e2e  # 8 roteiros no navegador contra o Supabase local (Docker + Pl
 ```
 Roteiros em `e2e/`: principal, codigo, moedas, tributos, fretes, larguras, bdi, convite (~66 passos).
 
+## Plano comercial (em pausa, retomar depois)
+Documento com o checklist completo (fases 0 a 5, decisões, preços, custos):
+https://claude.ai/artifact/JYN8UwLNZzY9P8GDnkZHjr
+- Decidido: público-alvo; planos Grátis (1 projeto, 30 linhas por Mapa, 1 usuário), Individual (R$ 1.490 por projeto,
+  12 meses, 1 usuário = 4 pessoas, 1 por papel; sem renovação: 3 meses somente leitura e depois apaga, com avisos por
+  e-mail 30/7/1 dias e opção de baixar em Excel) e Empresa (R$ 400/usuário até 5; R$ 350/usuário de 6 a 10; acima sob
+  consulta; mensal ou anual = 10 meses pelo preço de 12).
+- Próximo passo: Fase 1 (Supabase Pro + banco em São Paulo, Vercel Pro, app.fcapex.com.br, homologação, monitoramento,
+  Termos/Privacidade). Custo estimado ~US$ 55/mês. Falta saber se os dados atuais de produção são reais ou testes.
+
 ## Pendências
 1. **Supabase Pro + mudar o banco para São Paulo** antes do primeiro cliente real (backup diário, sem pausa
    por inatividade, LGPD/latência). No grátis não cabe um segundo projeto.
